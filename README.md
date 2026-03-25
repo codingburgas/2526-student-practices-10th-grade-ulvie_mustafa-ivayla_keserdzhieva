@@ -36,7 +36,7 @@ There will be many duplicate instances in our system. The interviewer expects yo
 # 3. Requirements for the Movie Ticket Booking System
 The following are the requirements that we have defined for the movie ticket booking problem:
 
-### Stage One
+## Stage One
 * R1: There exist multiple cinemas in the city, and the cinema has multiple halls.
 
 * R2: Each movie in the cinema can have multiple shows, however, one hall will only show one show at a time.
@@ -45,14 +45,14 @@ The following are the requirements that we have defined for the movie ticket boo
 
 * R4: Users can search movies based on the following four criteria: title, language, genre, and release date.
 
-### Stage Two
+## Stage Two
 * R5: Users can make a booking at any cinema hall at the available showtime.
 
 * R6: The booking can either be made by the customer online or via a walk-in by the ticket agent.
 
 * R7: Online customers can only pay using a credit card, while walk-in customers can pay using cash or credit card through the ticket agent.
 
-### Stage Three
+## Stage Three
 * R8: Users can select multiple available seats for a show from a given seating arrangement.
 
 * R9: Each seat type has a fixed cost. There are three types of seats: silver, gold, and platinum.
@@ -61,7 +61,7 @@ The following are the requirements that we have defined for the movie ticket boo
 
 * R11: No two customers should be able to reserve the same seat.
 
-### Stage Four
+## Stage Four
 * R12: The admin can perform the following five actions on the show times and the movie:
 
     * Add a show
@@ -72,7 +72,7 @@ The following are the requirements that we have defined for the movie ticket boo
 
 * R13: The system should be able to differentiate between available and booked seats.
 
-### Stage Five
+## Stage Five
 * R14: The system should generate a notification for the following three cases:
 
     * A new movie has been released.
