@@ -1,9 +1,0 @@
-<Solution>
-  <Configurations>
-    <Platform Name="x64" />
-    <Platform Name="x86" />
-  </Configurations>
-  <Project Path="../cinema_business/cinema_business.vcxproj" Id="6237360f-c567-450f-b94f-b2a05096b831" />
-  <Project Path="../cinema_data/cinema_data.vcxproj" Id="93cbc6a9-120d-4482-bbea-dce5ae18bea7" />
-  <Project Path="cinema_presentation.vcxproj" Id="2218e195-de11-41b5-84d6-1e22459569db" />
-</Solution>
