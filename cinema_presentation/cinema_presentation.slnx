@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="../cinema_business/cinema_business.vcxproj" />
+  <Project Path="../cinema_logic/cinema_logic.vcxproj" />
+  <Project Path="cinema_presentation.vcxproj" />
+</Solution>
