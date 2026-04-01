@@ -1,0 +1,354 @@
+import { StandardButton, LineEdit, ComboBox, ListView, VerticalBox, HorizontalBox, GridBox } from "std-widgets.slint";
+
+export global CinemaLogic {
+    in property <string> current-page: "home"; // home, movies, showtime, seats, booking, admin
+    in property <[string]> movie-list: ["The Matrix", "Inception", "Interstellar"];
+    in property <string> selected-movie: "";
+    in property <[string]> available-showtimes: ["10:00 AM", "1:00 PM", "4:00 PM", "7:00 PM"];
+    in property <string> selected-showtime: "";
+    in property <int> total-price: 0;
+    
+    callback search-movie(string);
+    callback select-movie(string);
+    callback select-showtime(string);
+    callback select-seat(int, int);
+    callback confirm-booking();
+    callback cancel-booking();
+    callback go-to-page(string);
+}
+
+component MovieCard inherits Rectangle {
+    width: 200px;
+    height: 250px;
+    background: #f0f0f0;
+    border-radius: 8px;
+    
+    in property <string> title;
+    in property <string> language;
+    in property <string> genre;
+    
+    callback clicked();
+    
+    VerticalBox {
+        padding: 12px;
+        spacing: 8px;
+        
+        Text {
+            text: title;
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        Text {
+            text: "Language: " + language;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        Text {
+            text: "Genre: " + genre;
+            font-size: 12px;
+            color: #666;
+        }
+        
+        Rectangle {
+            background: #007bff;
+            border-radius: 4px;
+            
+            TouchArea {
+                clicked => {
+                    root.clicked();
+                }
+            }
+            
+            Text {
+                text: "Select";
+                color: white;
+                font-weight: bold;
+            }
+        }
+    }
+}
+
+component SeatGrid inherits GridBox {
+    in property <int> rows: 8;
+    in property <int> columns: 10;
+    in property <[bool]> booked-seats;
+    
+    callback seat-clicked(int, int);
+    
+    HorizontalBox {
+        for row in 0 to rows: VerticalBox {
+            for col in 0 to columns: Rectangle {
+                width: 30px;
+                height: 30px;
+                background: booked-seats[row * columns + col] ? #999 : #4CAF50;
+                border-radius: 4px;
+                border-width: 1px;
+                border-color: #333;
+                
+                TouchArea {
+                    clicked => {
+                        if (!booked-seats[row * columns + col]) {
+                            seat-clicked(row, col);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component CinemaApp inherits Window {
+    width: 1200px;
+    height: 800px;
+    title: "Cinema Ticket Booking System";
+    
+    VerticalBox {
+        // Header
+        Rectangle {
+            height: 60px;
+            background: #001a33;
+            
+            HorizontalBox {
+                padding: 10px;
+                Text {
+                    text: "🎬 Cinema Ticket Booking";
+                    color: white;
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+                
+                Rectangle {
+                    width: 100%;
+                }
+                
+                if CinemaLogic.current-page != "home": StandardButton {
+                    text: "← Back";
+                    clicked => {
+                        CinemaLogic.go-to-page("home");
+                    }
+                }
+            }
+        }
+        
+        // Main Content Area
+        VerticalBox {
+            // Home Page
+            if CinemaLogic.current-page == "home": VerticalBox {
+                padding: 20px;
+                spacing: 20px;
+                
+                Text {
+                    text: "Welcome to Cinema Booking System";
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #001a33;
+                }
+                
+                HorizontalBox {
+                    StandardButton {
+                        text: "🎥 Book Tickets";
+                        clicked => {
+                            CinemaLogic.go-to-page("movies");
+                        }
+                    }
+                    
+                    StandardButton {
+                        text: "⚙️ Admin Panel";
+                        clicked => {
+                            CinemaLogic.go-to-page("admin");
+                        }
+                    }
+                    
+                    StandardButton {
+                        text: "📋 My Bookings";
+                        clicked => {
+                            CinemaLogic.go-to-page("bookings");
+                        }
+                    }
+                }
+            }
+            
+            // Movie Selection Page
+            if CinemaLogic.current-page == "movies": VerticalBox {
+                padding: 20px;
+                spacing: 15px;
+                
+                Text {
+                    text: "Select a Movie";
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+                
+                HorizontalBox {
+                    Text { text: "Search: "; width: 80px; }
+                    LineEdit {
+                        placeholder-text: "Enter movie name...";
+                    }
+                }
+                
+                ScrollView {
+                    HorizontalBox {
+                        spacing: 15px;
+                        for movie in CinemaLogic.movie-list: MovieCard {
+                            title: movie;
+                            language: "English";
+                            genre: "Sci-Fi";
+                            clicked => {
+                                CinemaLogic.select-movie(movie);
+                                CinemaLogic.go-to-page("showtime");
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Showtime Selection Page
+            if CinemaLogic.current-page == "showtime": VerticalBox {
+                padding: 20px;
+                spacing: 15px;
+                
+                Text {
+                    text: "Select Showtime for: " + CinemaLogic.selected-movie;
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+                
+                Text {
+                    text: "Cinema: PVR Cinemas, Hall: 3";
+                    font-size: 14px;
+                    color: #666;
+                }
+                
+                HorizontalBox {
+                    spacing: 10px;
+                    for showtime in CinemaLogic.available-showtimes: StandardButton {
+                        text: showtime;
+                        clicked => {
+                            CinemaLogic.select-showtime(showtime);
+                            CinemaLogic.go-to-page("seats");
+                        }
+                    }
+                }
+            }
+            
+            // Seat Selection Page
+            if CinemaLogic.current-page == "seats": VerticalBox {
+                padding: 20px;
+                spacing: 15px;
+                
+                Text {
+                    text: "Select Seats";
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+                
+                Text {
+                    text: CinemaLogic.selected-movie + " at " + CinemaLogic.selected-showtime;
+                    font-size: 14px;
+                    color: #666;
+                }
+                
+                Text {
+                    text: "Screen →";
+                    font-size: 14px;
+                    font-weight: bold;
+                    text-alignment: center;
+                }
+                
+                ScrollView {
+                    SeatGrid {
+                        rows: 8;
+                        columns: 10;
+                        booked-seats: [false, false, true, false, false, false, true, false, false, false,
+                                      false, false, false, false, false, false, false, false, true, false];
+                        seat-clicked(row, col) => {
+                            CinemaLogic.select-seat(row, col);
+                        }
+                    }
+                }
+                
+                HorizontalBox {
+                    spacing: 10px;
+                    Text { text: "Price: ₹" + CinemaLogic.total-price; font-weight: bold; }
+                    Rectangle { width: 100%; }
+                    StandardButton {
+                        text: "Proceed to Payment";
+                        clicked => {
+                            CinemaLogic.go-to-page("booking");
+                        }
+                    }
+                }
+            }
+            
+            // Booking Confirmation Page
+            if CinemaLogic.current-page == "booking": VerticalBox {
+                padding: 20px;
+                spacing: 15px;
+                
+                Text {
+                    text: "Booking Confirmation";
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+                
+                Rectangle {
+                    background: #f9f9f9;
+                    border-radius: 8px;
+                    VerticalBox {
+                        padding: 15px;
+                        Text { text: "Movie: " + CinemaLogic.selected-movie; }
+                        Text { text: "Showtime: " + CinemaLogic.selected-showtime; }
+                        Text { text: "Total Price: ₹" + CinemaLogic.total-price; font-weight: bold; }
+                    }
+                }
+                
+                HorizontalBox {
+                    spacing: 10px;
+                    Rectangle { width: 100%; }
+                    StandardButton {
+                        text: "Cancel";
+                        clicked => { CinemaLogic.cancel-booking(); }
+                    }
+                    StandardButton {
+                        text: "Confirm & Pay";
+                        clicked => { CinemaLogic.confirm-booking(); }
+                    }
+                }
+            }
+            
+            // Admin Panel Page
+            if CinemaLogic.current-page == "admin": VerticalBox {
+                padding: 20px;
+                spacing: 15px;
+                
+                Text {
+                    text: "Admin Panel";
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+                
+                HorizontalBox {
+                    spacing: 10px;
+                    StandardButton { text: "➕ Add Movie"; }
+                    StandardButton { text: "➕ Add Show"; }
+                    StandardButton { text: "✏️ Edit Show"; }
+                    StandardButton { text: "❌ Delete Show"; }
+                }
+            }
+        }
+        
+        // Footer
+        Rectangle {
+            height: 40px;
+            background: #f0f0f0;
+            Text {
+                text: "© 2024 Cinema Booking System";
+                color: #666;
+                font-size: 12px;
+            }
+        }
+    }
+}
