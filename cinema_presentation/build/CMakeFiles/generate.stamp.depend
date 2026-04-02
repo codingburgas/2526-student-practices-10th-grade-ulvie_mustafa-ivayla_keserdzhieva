@@ -1,0 +1,27 @@
+# CMake generation dependency list for this directory.
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/CMakeLists.txt
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/CMakeFiles/4.2.0-rc2/CMakeCXXCompiler.cmake
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/CMakeFiles/4.2.0-rc2/CMakeRCCompiler.cmake
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/CMakeFiles/4.2.0-rc2/CMakeSystem.cmake
+D:/share/cmake-4.2/Modules/CMakeCXXInformation.cmake
+D:/share/cmake-4.2/Modules/CMakeCommonLanguageInclude.cmake
+D:/share/cmake-4.2/Modules/CMakeGenericSystem.cmake
+D:/share/cmake-4.2/Modules/CMakeInitializeConfigs.cmake
+D:/share/cmake-4.2/Modules/CMakeLanguageInformation.cmake
+D:/share/cmake-4.2/Modules/CMakeRCInformation.cmake
+D:/share/cmake-4.2/Modules/CMakeSystemSpecificInformation.cmake
+D:/share/cmake-4.2/Modules/CMakeSystemSpecificInitialize.cmake
+D:/share/cmake-4.2/Modules/Compiler/CMakeCommonCompilerMacros.cmake
+D:/share/cmake-4.2/Modules/Compiler/MSVC-CXX.cmake
+D:/share/cmake-4.2/Modules/Compiler/MSVC.cmake
+D:/share/cmake-4.2/Modules/Internal/CMakeCXXLinkerInformation.cmake
+D:/share/cmake-4.2/Modules/Internal/CMakeCommonLinkerInformation.cmake
+D:/share/cmake-4.2/Modules/Linker/MSVC-CXX.cmake
+D:/share/cmake-4.2/Modules/Linker/MSVC.cmake
+D:/share/cmake-4.2/Modules/Platform/Linker/Windows-MSVC-CXX.cmake
+D:/share/cmake-4.2/Modules/Platform/Linker/Windows-MSVC.cmake
+D:/share/cmake-4.2/Modules/Platform/Windows-Initialize.cmake
+D:/share/cmake-4.2/Modules/Platform/Windows-MSVC-CXX.cmake
+D:/share/cmake-4.2/Modules/Platform/Windows-MSVC.cmake
+D:/share/cmake-4.2/Modules/Platform/Windows.cmake
+D:/share/cmake-4.2/Modules/Platform/WindowsPaths.cmake

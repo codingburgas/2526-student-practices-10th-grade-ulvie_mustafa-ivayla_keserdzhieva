@@ -1,0 +1,46 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/corrosion-populate"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/ca5d10355e82d66657b8d42e2a189de5/corrosion-populate.rule"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/1b712fd6a21cf5c897013ca59173fbd1/corrosion-populate-complete.rule"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/8607e790b166e5ed3aa3555464bb1054/corrosion-populate-build.rule"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/8607e790b166e5ed3aa3555464bb1054/corrosion-populate-configure.rule"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/8607e790b166e5ed3aa3555464bb1054/corrosion-populate-download.rule"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/8607e790b166e5ed3aa3555464bb1054/corrosion-populate-install.rule"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/8607e790b166e5ed3aa3555464bb1054/corrosion-populate-mkdir.rule"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/8607e790b166e5ed3aa3555464bb1054/corrosion-populate-patch.rule"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/8607e790b166e5ed3aa3555464bb1054/corrosion-populate-test.rule"
+		},
+		{
+			"file" : "D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/8607e790b166e5ed3aa3555464bb1054/corrosion-populate-update.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"corrosion-populate"
+		],
+		"name" : "corrosion-populate"
+	}
+}

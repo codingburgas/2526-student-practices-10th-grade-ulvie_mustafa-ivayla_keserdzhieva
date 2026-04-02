@@ -1,0 +1,20 @@
+# CMake generation dependency list for this directory.
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/4.2.0-rc2/CMakeSystem.cmake
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeLists.txt
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/slint-populate-prefix/tmp/slint-populate-mkdirs.cmake
+D:/share/cmake-4.2/Modules/CMakeGenericSystem.cmake
+D:/share/cmake-4.2/Modules/CMakeInitializeConfigs.cmake
+D:/share/cmake-4.2/Modules/CMakeSystemSpecificInformation.cmake
+D:/share/cmake-4.2/Modules/CMakeSystemSpecificInitialize.cmake
+D:/share/cmake-4.2/Modules/ExternalProject.cmake
+D:/share/cmake-4.2/Modules/ExternalProject/PatchInfo.txt.in
+D:/share/cmake-4.2/Modules/ExternalProject/RepositoryInfo.txt.in
+D:/share/cmake-4.2/Modules/ExternalProject/UpdateInfo.txt.in
+D:/share/cmake-4.2/Modules/ExternalProject/cfgcmd.txt.in
+D:/share/cmake-4.2/Modules/ExternalProject/gitclone.cmake.in
+D:/share/cmake-4.2/Modules/ExternalProject/gitupdate.cmake.in
+D:/share/cmake-4.2/Modules/ExternalProject/mkdirs.cmake.in
+D:/share/cmake-4.2/Modules/ExternalProject/shared_internal_commands.cmake
+D:/share/cmake-4.2/Modules/Platform/Windows-Initialize.cmake
+D:/share/cmake-4.2/Modules/Platform/Windows.cmake
+D:/share/cmake-4.2/Modules/Platform/WindowsPaths.cmake

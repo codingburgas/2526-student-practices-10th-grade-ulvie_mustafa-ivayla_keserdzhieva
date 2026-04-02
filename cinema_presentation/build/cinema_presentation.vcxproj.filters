@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{E71D1E6D-2358-3CA4-91A1-80C03E59DCBB}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

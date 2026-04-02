@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\62800a6da61482287812bbbbe5f7e9f1\slint-populate-mkdir.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\62800a6da61482287812bbbbe5f7e9f1\slint-populate-download.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\62800a6da61482287812bbbbe5f7e9f1\slint-populate-update.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\62800a6da61482287812bbbbe5f7e9f1\slint-populate-patch.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\62800a6da61482287812bbbbe5f7e9f1\slint-populate-configure.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\62800a6da61482287812bbbbe5f7e9f1\slint-populate-build.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\62800a6da61482287812bbbbe5f7e9f1\slint-populate-install.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\62800a6da61482287812bbbbe5f7e9f1\slint-populate-test.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\809d2ee6a024adf3b0689745b9645833\slint-populate-complete.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\de30daf047c51f71dcdb189a4939e296\slint-populate.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+    <CustomBuild Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="D:\schoolProjects\sprints\2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva\cinema_presentation\build\_deps\slint-subbuild\CMakeFiles\slint-populate" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{A13FD3BC-BB40-3037-B25F-6589E5E68D3F}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

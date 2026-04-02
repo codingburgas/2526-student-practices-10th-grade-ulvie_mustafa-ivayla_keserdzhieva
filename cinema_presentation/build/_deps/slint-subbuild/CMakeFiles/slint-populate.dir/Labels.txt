@@ -1,0 +1,14 @@
+# Target labels
+ slint-populate
+# Source files and their labels
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/slint-populate
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/de30daf047c51f71dcdb189a4939e296/slint-populate.rule
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/809d2ee6a024adf3b0689745b9645833/slint-populate-complete.rule
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/62800a6da61482287812bbbbe5f7e9f1/slint-populate-build.rule
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/62800a6da61482287812bbbbe5f7e9f1/slint-populate-configure.rule
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/62800a6da61482287812bbbbe5f7e9f1/slint-populate-download.rule
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/62800a6da61482287812bbbbe5f7e9f1/slint-populate-install.rule
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/62800a6da61482287812bbbbe5f7e9f1/slint-populate-mkdir.rule
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/62800a6da61482287812bbbbe5f7e9f1/slint-populate-patch.rule
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/62800a6da61482287812bbbbe5f7e9f1/slint-populate-test.rule
+D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/slint-subbuild/CMakeFiles/62800a6da61482287812bbbbe5f7e9f1/slint-populate-update.rule
