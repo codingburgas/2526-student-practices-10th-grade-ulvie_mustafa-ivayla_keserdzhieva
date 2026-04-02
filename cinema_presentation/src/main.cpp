@@ -29,14 +29,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         RegisterClass(&wc);
 
+        // Get screen dimensions for full screen
+        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
         // Create window
         HWND hwnd = CreateWindowEx(
             0,
             CLASS_NAME,
             "Test Screen - Cinema Booking System",
-            WS_OVERLAPPEDWINDOW & ~WS_THICKFRAME & ~WS_MAXIMIZEBOX,  // Fixed size window
-            CW_USEDEFAULT, CW_USEDEFAULT,
-            WINDOW_WIDTH, WINDOW_HEIGHT,
+            WS_POPUP,  // Full screen borderless window
+            0, 0,
+            screenWidth, screenHeight,
             NULL,
             NULL,
             hInstance,
@@ -92,7 +96,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
         }
 
         case WM_KEYDOWN:
-            if (wParam == 'G') {
+            if (wParam == VK_ESCAPE) {
+                PostQuitMessage(0);
+            }
+            else if (wParam == 'G') {
                 showGrid = !showGrid;
                 InvalidateRect(hwnd, NULL, TRUE);
             }
