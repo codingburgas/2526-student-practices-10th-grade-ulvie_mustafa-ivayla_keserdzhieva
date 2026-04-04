@@ -29,18 +29,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
         RegisterClass(&wc);
 
-        // Get screen dimensions for full screen
-        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-
         // Create window
         HWND hwnd = CreateWindowEx(
             0,
             CLASS_NAME,
             "Test Screen - Cinema Booking System",
-            WS_POPUP,  // Full screen borderless window
-            0, 0,
-            screenWidth, screenHeight,
+            WS_OVERLAPPEDWINDOW,  // Standard window with min/max/close buttons
+            CW_USEDEFAULT, CW_USEDEFAULT,
+            WINDOW_WIDTH, WINDOW_HEIGHT,
             NULL,
             NULL,
             hInstance,
