@@ -7,8 +7,7 @@
 #define BACKGROUND_COLOR RGB(21, 21, 21)  // #151515
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
-void DrawGrid(HDC hdc, RECT* clientRect);
-void DrawTextLabels(HDC hdc, RECT* clientRect);
+void DrawNavbar(HDC hdc, RECT* clientRect);
 
 bool showGrid = true;
 
@@ -87,6 +86,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             FillRect(hdc, &clientRect, bgBrush);
             DeleteObject(bgBrush);
 
+            DrawNavbar(hdc, &clientRect);
+
             EndPaint(hwnd, &ps);
             return 0;
         }
@@ -122,40 +123,148 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-void DrawGrid(HDC hdc, RECT* clientRect) {
-    HPEN gridPen = CreatePen(PS_SOLID, 1, RGB(100, 100, 100));
-    SelectObject(hdc, gridPen);
+void DrawNavbar(HDC hdc, RECT* clientRect) {
+    int startY = 54;
 
-    // Draw vertical lines
-    for (int x = 0; x < clientRect->right; x += 100) {
-        MoveToEx(hdc, x, 0, NULL);
-        LineTo(hdc, x, clientRect->bottom);
-    }
-
-    // Draw horizontal lines
-    for (int y = 0; y < clientRect->bottom; y += 100) {
-        MoveToEx(hdc, 0, y, NULL);
-        LineTo(hdc, clientRect->right, y);
-    }
-
-    DeleteObject(gridPen);
-}
-
-void DrawTextLabels(HDC hdc, RECT* clientRect) {
     SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, RGB(85, 85, 85));
 
-    HFONT labelFont = CreateFont(11, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+    // Create fonts
+    HFONT navFontSelected = CreateFont(18, 0, 0, 0, FW_BOLD, FALSE, FALSE, FALSE,
                                DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
                                CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
-                               DEFAULT_PITCH | FF_DONTCARE, "Courier New");
-    SelectObject(hdc, labelFont);
+                               DEFAULT_PITCH | FF_DONTCARE, "Inter");
+    HFONT navFontNormal = CreateFont(18, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE,
+                               DEFAULT_CHARSET, OUT_DEFAULT_PRECIS,
+                               CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
+                               DEFAULT_PITCH | FF_DONTCARE, "Inter");
 
-    // Corner labels
-    TextOut(hdc, 20, 20, "1440×943", 8);
-    TextOut(hdc, WINDOW_WIDTH - 60, 20, "W:1440", 6);
-    TextOut(hdc, 20, WINDOW_HEIGHT - 30, "H:943", 5);
-    TextOut(hdc, WINDOW_WIDTH - 50, WINDOW_HEIGHT - 30, "943px", 5);
+    // Colors
+    COLORREF colorSelected = RGB(181, 181, 181); // #B5B5B5
+    COLORREF colorNormal = RGB(109, 109, 109);   // #6D6D6D
 
-    DeleteObject(labelFont);
+    // Pre-calculate text sizes to enable relative dynamic spacing
+    SIZE sizeHome, sizeTickets, sizeCity;
+    HGDIOBJ oldFont = SelectObject(hdc, navFontSelected);
+    GetTextExtentPoint32(hdc, "Home", 4, &sizeHome);
+    SelectObject(hdc, navFontNormal);
+    GetTextExtentPoint32(hdc, "Your Tickets", 12, &sizeTickets);
+    GetTextExtentPoint32(hdc, "City", 4, &sizeCity);
+
+    // Fixed sizing elements
+    int logoWidth = 40;
+    int searchWidth = 308;
+    int cityIconWidth = 25;
+    int profileWidth = 36;
+    int sidePadding = 50;
+
+    int totalFixedItemsWidth = sidePadding * 2 + logoWidth + sizeHome.cx + sizeTickets.cx + searchWidth + sizeCity.cx + cityIconWidth + profileWidth;
+
+    // Available space to distribute to the gaps (preventing negative values on very small windows)
+    int totalOriginalGaps = 42 + 47 + 71 + 497 + 82; // 739
+    int availableGapSpace = clientRect->right - totalFixedItemsWidth;
+    if (availableGapSpace < totalOriginalGaps) availableGapSpace = totalOriginalGaps;
+
+    // Relative gaps distributing the screen width
+    int gap1 = (int)(availableGapSpace * (42.0 / totalOriginalGaps));
+    int gap2 = (int)(availableGapSpace * (47.0 / totalOriginalGaps));
+    int gap3 = (int)(availableGapSpace * (71.0 / totalOriginalGaps));
+    int gap4 = (int)(availableGapSpace * (497.0 / totalOriginalGaps));
+    int gap5 = (int)(availableGapSpace * (82.0 / totalOriginalGaps));
+
+    int currentX = sidePadding; // Starting padding from left
+
+    // 1. Logo (Placeholder Box)
+    HBRUSH logoBrush = CreateSolidBrush(colorSelected);
+    RECT logoRect = { currentX, startY - 5, currentX + logoWidth, startY + 25 };
+    FillRect(hdc, &logoRect, logoBrush);
+    DeleteObject(logoBrush);
+    currentX += logoWidth + gap1;
+
+    // 2. Home (Selected)
+    // Draw a subtle highlighted boundary to simulate a soft transparent glow
+    HBRUSH glowBrush = CreateSolidBrush(RGB(35, 35, 35)); // Slightly lighter than background #151515
+    HPEN glowPen = CreatePen(PS_NULL, 0, RGB(0,0,0));
+    HGDIOBJ oldGlowBrush = SelectObject(hdc, glowBrush);
+    HGDIOBJ oldGlowPen = SelectObject(hdc, glowPen);
+
+    int paddingX = 16;
+    int paddingY = 8;
+    RoundRect(hdc, currentX - paddingX, startY - paddingY, currentX + sizeHome.cx + paddingX, startY + sizeHome.cy + paddingY, 20, 20);
+
+    SelectObject(hdc, oldGlowBrush);
+    SelectObject(hdc, oldGlowPen);
+    DeleteObject(glowBrush);
+    DeleteObject(glowPen);
+
+    SelectObject(hdc, navFontSelected);
+    SetTextColor(hdc, colorSelected);
+    TextOut(hdc, currentX, startY, "Home", 4);
+    currentX += sizeHome.cx + gap2;
+
+    // 3. Your Tickets (Unselected)
+    SelectObject(hdc, navFontNormal);
+    SetTextColor(hdc, colorNormal);
+    TextOut(hdc, currentX, startY, "Your Tickets", 12);
+    currentX += sizeTickets.cx + gap3;
+
+    // 4. Searchbar
+    HBRUSH searchBrush = CreateSolidBrush(RGB(29, 29, 29)); // #1D1D1D
+    HPEN nullPen = CreatePen(PS_NULL, 0, RGB(0,0,0));
+    HGDIOBJ oldBrush = SelectObject(hdc, searchBrush);
+    HGDIOBJ oldPen = SelectObject(hdc, nullPen);
+
+    int searchHeight = 41;
+    int searchY = startY - (searchHeight / 2) + 10;
+    RoundRect(hdc, currentX, searchY, currentX + searchWidth, searchY + searchHeight, 19, 19);
+
+    SelectObject(hdc, oldBrush);
+    SelectObject(hdc, oldPen);
+    DeleteObject(searchBrush);
+    DeleteObject(nullPen);
+
+    // Search placeholder text
+    SetTextColor(hdc, colorNormal);
+    TextOut(hdc, currentX + 20, startY - 2, "Search a movie", 14);
+
+    // Fake search icon at end of searchbar
+    HPEN iconPen = CreatePen(PS_SOLID, 2, colorNormal);
+    oldPen = SelectObject(hdc, iconPen);
+    int iconX = currentX + searchWidth - 30;
+    int iconY = searchY + searchHeight / 2;
+    Ellipse(hdc, iconX - 6, iconY - 6, iconX + 6, iconY + 6);
+    MoveToEx(hdc, iconX + 4, iconY + 4, NULL);
+    LineTo(hdc, iconX + 10, iconY + 10);
+    SelectObject(hdc, oldPen);
+    DeleteObject(iconPen);
+
+    currentX += searchWidth + gap4;
+
+    // 5. City
+    TextOut(hdc, currentX, startY, "City", 4);
+
+    // Fake location icon
+    iconPen = CreatePen(PS_SOLID, 2, colorNormal);
+    oldPen = SelectObject(hdc, iconPen);
+    int locX = currentX + sizeCity.cx + 15;
+    Ellipse(hdc, locX - 4, startY + 4, locX + 4, startY + 12);
+    MoveToEx(hdc, locX, startY + 12, NULL);
+    LineTo(hdc, locX, startY + 18);
+    SelectObject(hdc, oldPen);
+    DeleteObject(iconPen);
+
+    currentX += sizeCity.cx + cityIconWidth + gap5;
+
+    // 6. Profile Icon (Circle)
+    HBRUSH profileBrush = CreateSolidBrush(colorNormal);
+    oldBrush = SelectObject(hdc, profileBrush);
+    oldPen = SelectObject(hdc, GetStockObject(NULL_PEN));
+    Ellipse(hdc, currentX, startY - 8, currentX + profileWidth, startY + 28);
+    SelectObject(hdc, oldBrush);
+    SelectObject(hdc, oldPen);
+    DeleteObject(profileBrush);
+
+    // Cleanup fonts
+    SelectObject(hdc, oldFont);
+    DeleteObject(navFontSelected);
+    DeleteObject(navFontNormal);
 }
