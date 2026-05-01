@@ -1,3 +1,0 @@
-D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/corrosion-populate.dir
-D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/ALL_BUILD.dir
-D:/schoolProjects/sprints/2526-student-practices-10th-grade-ulvie_mustafa-ivayla_keserdzhieva/cinema_presentation/build/_deps/corrosion-subbuild/CMakeFiles/ZERO_CHECK.dir
