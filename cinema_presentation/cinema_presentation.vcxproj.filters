@@ -13,48 +13,10 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\ImGUI">
-      <UniqueIdentifier>{dbeab9e3-9090-49ea-86d8-208efe803212}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="src\main.cpp">
+    <ClCompile Include="cinema_presentation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ImGUI\imgui.cpp">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\ImGUI\imgui_demo.cpp">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\ImGUI\imgui_draw.cpp">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\ImGUI\imgui_tables.cpp">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClCompile>
-    <ClCompile Include="src\ImGUI\imgui_widgets.cpp">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="src\ImGUI\imconfig.h">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ImGUI\imgui.h">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ImGUI\imgui_internal.h">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ImGUI\imstb_rectpack.h">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ImGUI\imstb_textedit.h">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClInclude>
-    <ClInclude Include="src\ImGUI\imstb_truetype.h">
-      <Filter>Source Files\ImGUI</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>
