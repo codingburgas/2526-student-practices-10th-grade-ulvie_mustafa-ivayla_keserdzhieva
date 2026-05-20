@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{9e93e4b0-eec2-4a7a-b99e-88893c25d3fe}</ProjectGuid>
+    <ProjectGuid>{624e3a5b-2bb1-4d66-897b-90b1983aeba5}</ProjectGuid>
     <RootNamespace>cinemadata</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -140,7 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
-    <ClInclude Include="pch.h" />
+    <ClInclude Include="ITicketRepository.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cinema_data.cpp" />
@@ -150,6 +150,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cinema_business\cinema_business.vcxproj">
+      <Project>{44018464-f42f-4b70-bfa0-4441e404f5be}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

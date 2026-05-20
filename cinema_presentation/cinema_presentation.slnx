@@ -3,5 +3,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
+  <Project Path="../cinema_business/cinema_business.vcxproj" />
+  <Project Path="../cinema_data/cinema_data.vcxproj" />
   <Project Path="cinema_presentation.vcxproj" />
 </Solution>

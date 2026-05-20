@@ -21,7 +21,7 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>18.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{2e1e12a8-0ba6-4358-b298-b29736440c68}</ProjectGuid>
+    <ProjectGuid>{44018464-f42f-4b70-bfa0-4441e404f5be}</ProjectGuid>
     <RootNamespace>cinemabusiness</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
@@ -140,7 +140,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
-    <ClInclude Include="pch.h" />
+    <ClInclude Include="BookingService.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cinema_business.cpp" />
@@ -150,6 +150,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cinema_presentation\cinema_presentation.vcxproj">
+      <Project>{f5c696c0-f04e-4e13-896f-f9b4aabb60ee}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
