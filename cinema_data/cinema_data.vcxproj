@@ -141,6 +141,7 @@
   <ItemGroup>
     <ClInclude Include="framework.h" />
     <ClInclude Include="ITicketRepository.h" />
+    <ClInclude Include="SqlTicketRepository.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cinema_data.cpp" />
