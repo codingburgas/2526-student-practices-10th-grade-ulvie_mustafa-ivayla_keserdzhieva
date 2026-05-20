@@ -1,0 +1,92 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio cache/options
+.vs/
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Visual Studio project files
+*.sln.iml
+
+# Build folder
+/build/
+/out/
+
+# ImGui configuration
+imgui.ini
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Compiled object files
+*.o
+*.obj
+*.exe
+*.out
+*.a
+*.lib
+*.so
+*.dylib
+
+# Compiled Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# IDE IntelliSense
+.IntelliSense/
+CopilotIndices/
+
+# Local environment
+.env
+.env.local
+
+# OS specific files
+.DS_Store
+Thumbs.db
+*.lnk
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+*~
+.#*
+
+# Build cache
+.cmake/
+CMakeCache.txt
+Makefile
+
+# Dependency directories
+vcpkg_installed/
