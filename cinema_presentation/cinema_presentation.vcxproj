@@ -145,7 +145,8 @@ d3dcompiler.lib;odbc32.lib</AdditionalDependencies>
     <ClCompile Include="imGUI\imgui_impl_win32.cpp" />
     <ClCompile Include="imGUI\imgui_tables.cpp" />
     <ClCompile Include="imGUI\imgui_widgets.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\mainMenu.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imGUI\imconfig.h" />

@@ -1,5 +1,5 @@
 #pragma once
-#include "../cinema_data/ITicketRepository.h"
+#include "../../cinema_data/include/ITicketRepository.h"
 #include <string>
 #include <memory>
 

@@ -3,15 +3,73 @@
 #include "imgui_impl_dx11.h"
 #include <d3d11.h>
 #include <tchar.h>
+#include <urlmon.h>
+#pragma comment(lib, "urlmon.lib")
+
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 // Forward declare native message handler from ImGui
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+// Forward declare Main Menu rendering function
+void RenderMainMenu(ID3D11ShaderResourceView* heroBannerSRV, int heroWidth, int heroHeight, ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights, int& selectedMovieIndex);
 
 // Global Direct3D Device Pointers
 static ID3D11Device* g_pd3dDevice = nullptr;
 static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
 static IDXGISwapChain* g_pSwapChain = nullptr;
 static ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
+
+// Texture loading utility using Windows URLMon & stb_image
+bool LoadTextureFromURL(ID3D11Device* pd3dDevice, const char* url, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height) {
+    if (!pd3dDevice || !url) return false;
+    
+    // Download image from API
+    const char* temp_file = "temp_poster_cache.jpg";
+    if (URLDownloadToFileA(nullptr, url, temp_file, 0, nullptr) != S_OK) return false;
+
+    // Load with stb_image
+    int image_width = 0;
+    int image_height = 0;
+    unsigned char* image_data = stbi_load(temp_file, &image_width, &image_height, NULL, 4);
+    if (image_data == NULL) return false;
+
+    // Create DirectX 11 Texture
+    D3D11_TEXTURE2D_DESC desc;
+    ZeroMemory(&desc, sizeof(desc));
+    desc.Width = image_width;
+    desc.Height = image_height;
+    desc.MipLevels = 1;
+    desc.ArraySize = 1;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.Usage = D3D11_USAGE_DEFAULT;
+    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+    desc.CPUAccessFlags = 0;
+
+    ID3D11Texture2D* pTexture = NULL;
+    D3D11_SUBRESOURCE_DATA subResource;
+    subResource.pSysMem = image_data;
+    subResource.SysMemPitch = desc.Width * 4;
+    subResource.SysMemSlicePitch = 0;
+    pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+
+    // Create Texture View
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    ZeroMemory(&srvDesc, sizeof(srvDesc));
+    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = desc.MipLevels;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+    pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
+    pTexture->Release();
+
+    *out_width = image_width;
+    *out_height = image_height;
+    stbi_image_free(image_data);
+    return true;
+}
 
 // System Setup Declarations
 bool CreateDeviceD3D(HWND hWnd);
@@ -42,7 +100,50 @@ int main(int, char**) {
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    ImGui::StyleColorsDark();
+    // Apply Modern Dark Theme
+    ImGuiStyle& style = ImGui::GetStyle();
+    ImVec4* colors = style.Colors;
+
+    ImVec4 bg = ImVec4(0.05f, 0.05f, 0.05f, 1.00f);        // #0D0D0D
+    ImVec4 surface = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);   // #1E1E1E
+    ImVec4 interact = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
+    ImVec4 accent = ImVec4(0.80f, 1.00f, 0.00f, 1.00f);    // #CCFF00
+    ImVec4 accent_hover = ImVec4(0.85f, 1.00f, 0.20f, 1.00f);
+    ImVec4 accent_active = ImVec4(0.70f, 0.90f, 0.00f, 1.00f);
+    ImVec4 text_primary = ImVec4(1.00f, 1.00f, 1.00f, 1.00f); // #FFFFFF
+    ImVec4 text_secondary = ImVec4(0.55f, 0.55f, 0.58f, 1.00f); // #8E8E93
+
+    colors[ImGuiCol_WindowBg] = bg;
+    colors[ImGuiCol_ChildBg] = bg;
+    colors[ImGuiCol_PopupBg] = surface;
+    colors[ImGuiCol_Text] = text_primary;
+    colors[ImGuiCol_TextDisabled] = text_secondary;
+    colors[ImGuiCol_FrameBg] = surface;
+    colors[ImGuiCol_FrameBgHovered] = interact;
+    colors[ImGuiCol_FrameBgActive] = interact;
+    colors[ImGuiCol_Button] = surface;
+    colors[ImGuiCol_ButtonHovered] = interact;
+    colors[ImGuiCol_ButtonActive] = interact;
+    colors[ImGuiCol_Header] = surface;
+    colors[ImGuiCol_HeaderHovered] = interact;
+    colors[ImGuiCol_HeaderActive] = interact;
+    colors[ImGuiCol_Border] = bg;
+    colors[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
+    colors[ImGuiCol_CheckMark] = accent;
+    colors[ImGuiCol_SliderGrab] = accent;
+    colors[ImGuiCol_SliderGrabActive] = accent_active;
+
+    style.WindowPadding = ImVec2(32, 32);
+    style.FramePadding = ImVec2(16, 10);
+    style.ItemSpacing = ImVec2(24, 24);
+    style.ItemInnerSpacing = ImVec2(12, 12);
+    style.WindowRounding = 12.0f;
+    style.ChildRounding = 10.0f;
+    style.FrameRounding = 8.0f;
+    style.PopupRounding = 8.0f;
+    style.ScrollbarRounding = 8.0f;
+    style.WindowBorderSize = 0.0f;
+    style.FrameBorderSize = 0.0f;
 
     // Bindings Setup
     ImGui_ImplWin32_Init(hwnd);
@@ -52,6 +153,31 @@ int main(int, char**) {
     bool showTicketingWindow = true;
     int selectedMovieIndex = -1;
     const char* movies[] = { "Dune: Part Two", "Interstellar", "Blade Runner 2049" };
+
+    // Fetch the hero banner directly from The Movie Database (TMDB) image service API
+    ID3D11ShaderResourceView* heroBannerSRV = nullptr;
+    int heroWidth = 0, heroHeight = 0;
+    // Dune: Part Two backdrop API Image
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg", &heroBannerSRV, &heroWidth, &heroHeight);
+
+    // Load poster images
+    ID3D11ShaderResourceView* posters[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
+    int posterWidths[6] = { 0, 0, 0, 0, 0, 0 };
+    int posterHeights[6] = { 0, 0, 0, 0, 0, 0 };
+    
+    // Dune Part Two Poster
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2JGqqUT1O.jpg", &posters[0], &posterWidths[0], &posterHeights[0]);
+    // Interstellar Poster
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/gEU2QlsUUQYKnUKtiI00Sn8vRXz.jpg", &posters[1], &posterWidths[1], &posterHeights[1]);
+    // Blade Runner 2049 Poster
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg", &posters[2], &posterWidths[2], &posterHeights[2]);
+    // The Dark Knight
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg", &posters[3], &posterWidths[3], &posterHeights[3]);
+    // Inception
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg", &posters[4], &posterWidths[4], &posterHeights[4]);
+    // The Matrix
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg", &posters[5], &posterWidths[5], &posterHeights[5]);
+
 
     // 4. Windows Event Loop
     bool running = true;
@@ -71,29 +197,11 @@ int main(int, char**) {
         ImGui::NewFrame();
 
         // --- RENDER CINEMA APP LAYOUT ---
-        ImGui::Begin("Cinema Administration Terminal", &showTicketingWindow);
-        ImGui::Text("Select a movie from the catalog below:");
-        ImGui::Separator();
-
-        for (int i = 0; i < 3; i++) {
-            if (ImGui::Selectable(movies[i], selectedMovieIndex == i)) {
-                selectedMovieIndex = i;
-            }
-        }
-
-        ImGui::Separator();
-        if (selectedMovieIndex != -1) {
-            ImGui::Text("Active Target: %s", movies[selectedMovieIndex]);
-            if (ImGui::Button("Confirm Ticket Purchase", ImVec2(200, 40))) {
-                // This is where you call your pure backend interface:
-                // m_bookingService->BookMovie(movies[selectedMovieIndex]);
-            }
-        }
-        ImGui::End();
+        RenderMainMenu(heroBannerSRV, heroWidth, heroHeight, posters, posterWidths, posterHeights, selectedMovieIndex);
 
         // 6. Finalization & Frame Presentation
         ImGui::Render();
-        const float clear_color_with_alpha[4] = { 0.45f, 0.55f, 0.60f, 1.00f };
+        const float clear_color_with_alpha[4] = { 0.05f, 0.05f, 0.05f, 1.00f };
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -181,3 +289,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }
+
+
+
