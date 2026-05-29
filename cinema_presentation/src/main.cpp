@@ -13,7 +13,7 @@
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Forward declare Main Menu rendering function
-void RenderMainMenu(ID3D11ShaderResourceView* heroBannerSRV, int heroWidth, int heroHeight, ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights, int& selectedMovieIndex);
+void RenderMainMenu(ID3D11ShaderResourceView** heroBanners, int* heroWidths, int* heroHeights, int& currentHeroIndex, ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights, int& selectedMovieIndex);
 
 // Global Direct3D Device Pointers
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -152,13 +152,19 @@ int main(int, char**) {
     // Main App Simulation Data
     bool showTicketingWindow = true;
     int selectedMovieIndex = -1;
+    int currentHeroIndex = 0;
     const char* movies[] = { "Dune: Part Two", "Interstellar", "Blade Runner 2049" };
 
     // Fetch the hero banner directly from The Movie Database (TMDB) image service API
-    ID3D11ShaderResourceView* heroBannerSRV = nullptr;
-    int heroWidth = 0, heroHeight = 0;
+    ID3D11ShaderResourceView* heroBanners[3] = { nullptr, nullptr, nullptr };
+    int heroWidths[3] = { 0, 0, 0 };
+    int heroHeights[3] = { 0, 0, 0 };
     // Dune: Part Two backdrop API Image
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg", &heroBannerSRV, &heroWidth, &heroHeight);
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg", &heroBanners[0], &heroWidths[0], &heroHeights[0]);
+    // Interstellar backdrop
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/original/xJHokMbljvjEVAZSZA15yCEeWAE.jpg", &heroBanners[1], &heroWidths[1], &heroHeights[1]);
+    // Blade Runner 2049 backdrop
+    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/original/ilRyazdoxigpjGQupCGhnioDV59.jpg", &heroBanners[2], &heroWidths[2], &heroHeights[2]);
 
     // Load poster images
     ID3D11ShaderResourceView* posters[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
@@ -197,7 +203,7 @@ int main(int, char**) {
         ImGui::NewFrame();
 
         // --- RENDER CINEMA APP LAYOUT ---
-        RenderMainMenu(heroBannerSRV, heroWidth, heroHeight, posters, posterWidths, posterHeights, selectedMovieIndex);
+        RenderMainMenu(heroBanners, heroWidths, heroHeights, currentHeroIndex, posters, posterWidths, posterHeights, selectedMovieIndex);
 
         // 6. Finalization & Frame Presentation
         ImGui::Render();
@@ -289,6 +295,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }
+
+
+
 
 
 

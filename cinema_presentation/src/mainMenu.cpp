@@ -1,7 +1,7 @@
 #include "imgui.h"
 #include <d3d11.h>
 
-void RenderMainMenu(ID3D11ShaderResourceView* heroBannerSRV, int heroWidth, int heroHeight, ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights, int& selectedMovieIndex) {
+void RenderMainMenu(ID3D11ShaderResourceView** heroBanners, int* heroWidths, int* heroHeights, int& currentHeroIndex, ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights, int& selectedMovieIndex) {
     ImGuiIO& io = ImGui::GetIO();
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(io.DisplaySize);
@@ -17,13 +17,18 @@ void RenderMainMenu(ID3D11ShaderResourceView* heroBannerSRV, int heroWidth, int 
     
     // Shift the poster image significantly higher by subtracting from the top offset Y starting point
     float heroOffsetY = -300.0f; // Shifted even higher!
-    float paddingTop = 50.0f; // Padding from top of screen!
+    float paddingTop = 100.0f; // Padding from top of screen!
     ImVec2 heroPos = ImVec2(layoutStartPos.x, layoutStartPos.y + paddingTop + heroOffsetY);
     
     float winWidth = ImGui::GetWindowWidth();
     float heroH = 750.0f; // Made the hero banner height dramatically higher!
     ImDrawList* drawList = ImGui::GetWindowDrawList();
     
+    // Select current banner
+    ID3D11ShaderResourceView* heroBannerSRV = heroBanners ? heroBanners[currentHeroIndex] : nullptr;
+    int heroWidth = heroWidths ? heroWidths[currentHeroIndex] : 1920;
+    int heroHeight = heroHeights ? heroHeights[currentHeroIndex] : 1080;
+
     // Draw only within the strictly visible container!
     float visibleH = (heroPos.y + heroH) - (layoutStartPos.y + paddingTop); 
     ImVec2 visiblePos = ImVec2(layoutStartPos.x, layoutStartPos.y + paddingTop);
@@ -89,13 +94,41 @@ void RenderMainMenu(ID3D11ShaderResourceView* heroBannerSRV, int heroWidth, int 
     ImGui::SameLine();
     ImGui::Text("Profile");
     
+    // Hero Text strings dynamically matched to banner index
+    const char* heroTitles[3] = { "DUNE: PART TWO", "INTERSTELLAR", "BLADE RUNNER 2049" };
+    const char* heroMetas[3] = { "2024 \x95 Sci-Fi \x95 2h 46m", "2014 \x95 Sci-Fi \x95 2h 49m", "2017 \x95 Sci-Fi \x95 2h 44m" };
+
     // Add Hero Text (Centered vertically within the remaining visible lens shape)
     ImVec2 heroTextPos = ImVec2(heroPos.x + 40, heroPos.y + heroH / 2.0f + 60.0f);
     ImGui::SetWindowFontScale(2.5f);
-    drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), heroTextPos, IM_COL32(255, 255, 255, 255), "DUNE: PART TWO", nullptr, 0.0f);
+    drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize(), heroTextPos, IM_COL32(255, 255, 255, 255), heroTitles[currentHeroIndex % 3], nullptr, 0.0f);
     ImGui::SetWindowFontScale(1.0f);
-    drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 1.2f, ImVec2(heroTextPos.x, heroTextPos.y + 45), IM_COL32(142, 142, 147, 255), "2024 \x95 Sci-Fi \x95 2h 46m", nullptr, 0.0f);
+    drawList->AddText(ImGui::GetFont(), ImGui::GetFontSize() * 1.2f, ImVec2(heroTextPos.x, heroTextPos.y + 45), IM_COL32(142, 142, 147, 255), heroMetas[currentHeroIndex % 3], nullptr, 0.0f);
     
+    // Left Arrow
+    ImVec2 leftArrowCenter = ImVec2(visiblePos.x + 35.0f + 25.0f, visiblePos.y + visibleH / 2.0f); // 35px padding + radius
+    drawList->AddCircleFilled(leftArrowCenter, 25.0f, IM_COL32(204, 255, 0, 255)); // Green circle
+    // Arrow lines
+    drawList->AddLine(ImVec2(leftArrowCenter.x + 5, leftArrowCenter.y - 10), ImVec2(leftArrowCenter.x - 5, leftArrowCenter.y), IM_COL32(0, 0, 0, 255), 3.0f);
+    drawList->AddLine(ImVec2(leftArrowCenter.x - 5, leftArrowCenter.y), ImVec2(leftArrowCenter.x + 5, leftArrowCenter.y + 10), IM_COL32(0, 0, 0, 255), 3.0f);
+    
+    ImGui::SetCursorScreenPos(ImVec2(leftArrowCenter.x - 25.0f, leftArrowCenter.y - 25.0f));
+    if (ImGui::InvisibleButton("left_banner", ImVec2(50, 50))) {
+        currentHeroIndex = (currentHeroIndex - 1 + 3) % 3;
+    }
+
+    // Right Arrow
+    ImVec2 rightArrowCenter = ImVec2(visiblePos.x + winWidth - 35.0f - 25.0f, visiblePos.y + visibleH / 2.0f); // 35px padding + radius
+    drawList->AddCircleFilled(rightArrowCenter, 25.0f, IM_COL32(204, 255, 0, 255)); // Green circle
+    // Arrow lines
+    drawList->AddLine(ImVec2(rightArrowCenter.x - 5, rightArrowCenter.y - 10), ImVec2(rightArrowCenter.x + 5, rightArrowCenter.y), IM_COL32(0, 0, 0, 255), 3.0f);
+    drawList->AddLine(ImVec2(rightArrowCenter.x + 5, rightArrowCenter.y), ImVec2(rightArrowCenter.x - 5, rightArrowCenter.y + 10), IM_COL32(0, 0, 0, 255), 3.0f);
+
+    ImGui::SetCursorScreenPos(ImVec2(rightArrowCenter.x - 25.0f, rightArrowCenter.y - 25.0f));
+    if (ImGui::InvisibleButton("right_banner", ImVec2(50, 50))) {
+        currentHeroIndex = (currentHeroIndex + 1) % 3;
+    }
+
     // Hero button
     ImGui::SetCursorScreenPos(ImVec2(heroTextPos.x, heroTextPos.y + 80));
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.80f, 1.00f, 0.00f, 1.0f));
@@ -170,6 +203,9 @@ void RenderMainMenu(ID3D11ShaderResourceView* heroBannerSRV, int heroWidth, int 
     ImGui::End();
     ImGui::PopStyleVar();
 }
+
+
+
 
 
 
