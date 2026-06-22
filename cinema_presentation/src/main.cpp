@@ -9,257 +9,247 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-// Forward declare native message handler from ImGui
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// Forward declare Main Menu rendering function
-void RenderMainMenu(ID3D11ShaderResourceView** heroBanners, int* heroWidths, int* heroHeights, int& currentHeroIndex, ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights, int& selectedMovieIndex);
+// Forward declaration — parameter names mirror the icon files in assets/icons/
+void RenderMainMenu(
+    ID3D11ShaderResourceView** heroBanners, int* heroWidths, int* heroHeights, int& currentHeroIndex,
+    ID3D11ShaderResourceView** posters,     int* posterWidths, int* posterHeights, int& selectedMovieIndex,
+    ID3D11ShaderResourceView*  playIconTex,     int playIconW,  int playIconH,
+    ID3D11ShaderResourceView*  favoriteIconTex, int favIconW,   int favIconH,
+    ID3D11ShaderResourceView*  leftArrowTex,    int leftArrW,   int leftArrH,
+    ID3D11ShaderResourceView*  rightArrowTex,   int rightArrW,  int rightArrH);
 
-// Global Direct3D Device Pointers
-static ID3D11Device* g_pd3dDevice = nullptr;
-static ID3D11DeviceContext* g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain* g_pSwapChain = nullptr;
+static ID3D11Device*           g_pd3dDevice           = nullptr;
+static ID3D11DeviceContext*    g_pd3dDeviceContext    = nullptr;
+static IDXGISwapChain*         g_pSwapChain           = nullptr;
 static ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
 
-// Texture loading utility using Windows URLMon & stb_image
-bool LoadTextureFromURL(ID3D11Device* pd3dDevice, const char* url, ID3D11ShaderResourceView** out_srv, int* out_width, int* out_height) {
-    if (!pd3dDevice || !url) return false;
-    
-    // Download image from API
-    const char* temp_file = "temp_poster_cache.jpg";
-    if (URLDownloadToFileA(nullptr, url, temp_file, 0, nullptr) != S_OK) return false;
+bool LoadTextureFromFile(ID3D11Device* dev, const char* path,
+                         ID3D11ShaderResourceView** srv, int* w, int* h) {
+    if (!dev || !path) return false;
+    int iw = 0, ih = 0;
+    unsigned char* data = stbi_load(path, &iw, &ih, nullptr, 4);
+    if (!data) return false;
 
-    // Load with stb_image
-    int image_width = 0;
-    int image_height = 0;
-    unsigned char* image_data = stbi_load(temp_file, &image_width, &image_height, NULL, 4);
-    if (image_data == NULL) return false;
-
-    // Create DirectX 11 Texture
-    D3D11_TEXTURE2D_DESC desc;
-    ZeroMemory(&desc, sizeof(desc));
-    desc.Width = image_width;
-    desc.Height = image_height;
-    desc.MipLevels = 1;
-    desc.ArraySize = 1;
-    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    D3D11_TEXTURE2D_DESC desc = {};
+    desc.Width            = iw;
+    desc.Height           = ih;
+    desc.MipLevels        = 1;
+    desc.ArraySize        = 1;
+    desc.Format           = DXGI_FORMAT_R8G8B8A8_UNORM;
     desc.SampleDesc.Count = 1;
-    desc.Usage = D3D11_USAGE_DEFAULT;
-    desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    desc.CPUAccessFlags = 0;
+    desc.Usage            = D3D11_USAGE_DEFAULT;
+    desc.BindFlags        = D3D11_BIND_SHADER_RESOURCE;
 
-    ID3D11Texture2D* pTexture = NULL;
-    D3D11_SUBRESOURCE_DATA subResource;
-    subResource.pSysMem = image_data;
-    subResource.SysMemPitch = desc.Width * 4;
-    subResource.SysMemSlicePitch = 0;
-    pd3dDevice->CreateTexture2D(&desc, &subResource, &pTexture);
+    D3D11_SUBRESOURCE_DATA sub = { data, (UINT)(iw * 4), 0 };
+    ID3D11Texture2D* tex = nullptr;
+    dev->CreateTexture2D(&desc, &sub, &tex);
 
-    // Create Texture View
-    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
-    ZeroMemory(&srvDesc, sizeof(srvDesc));
-    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
-    srvDesc.Texture2D.MipLevels = desc.MipLevels;
-    srvDesc.Texture2D.MostDetailedMip = 0;
-    pd3dDevice->CreateShaderResourceView(pTexture, &srvDesc, out_srv);
-    pTexture->Release();
+    D3D11_SHADER_RESOURCE_VIEW_DESC sd = {};
+    sd.Format                    = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.ViewDimension             = D3D11_SRV_DIMENSION_TEXTURE2D;
+    sd.Texture2D.MipLevels       = 1;
+    sd.Texture2D.MostDetailedMip = 0;
+    dev->CreateShaderResourceView(tex, &sd, srv);
+    tex->Release();
 
-    *out_width = image_width;
-    *out_height = image_height;
-    stbi_image_free(image_data);
+    *w = iw; *h = ih;
+    stbi_image_free(data);
     return true;
 }
 
-// System Setup Declarations
-bool CreateDeviceD3D(HWND hWnd);
-void CleanupDeviceD3D();
-void CreateRenderTarget();
-void CleanupRenderTarget();
+bool LoadTextureFromURL(ID3D11Device* dev, const char* url,
+                        ID3D11ShaderResourceView** srv, int* w, int* h) {
+    if (!dev || !url) return false;
+    const char* tmp = "temp_poster_cache.jpg";
+    if (URLDownloadToFileA(nullptr, url, tmp, 0, nullptr) != S_OK) return false;
+    return LoadTextureFromFile(dev, tmp, srv, w, h);
+}
+
+bool    CreateDeviceD3D(HWND hWnd);
+void    CleanupDeviceD3D();
+void    CreateRenderTarget();
+void    CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 int main(int, char**) {
-    // 1. Register Win32 Window Class
-    WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"CinemaSystem", nullptr };
-    ::RegisterClassExW(&wc);
-    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Cinema Ticketing Terminal", WS_OVERLAPPEDWINDOW, 100, 100, 1280, 800, nullptr, nullptr, wc.hInstance, nullptr);
+    // Enable DPI awareness so text and images render crisp on high-DPI / 4K screens
+    SetProcessDPIAware();
 
-    // 2. Initialize Direct3D Backend
+    WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L,
+                       GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr,
+                       L"CinemaSystem", nullptr };
+    ::RegisterClassExW(&wc);
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Cinema Ticketing Terminal",
+                                WS_OVERLAPPEDWINDOW, 50, 50, 1600, 900,
+                                nullptr, nullptr, wc.hInstance, nullptr);
+
     if (!CreateDeviceD3D(hwnd)) {
         CleanupDeviceD3D();
         ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
         return 1;
     }
-
     ::ShowWindow(hwnd, SW_SHOWDEFAULT);
     ::UpdateWindow(hwnd);
 
-    // 3. Initialize Dear ImGui Context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    // Apply Modern Dark Theme
+    // High-quality font config: OversampleH/V=3 eliminates pixelation in text
+    ImFontConfig fc;
+    fc.OversampleH = 3;
+    fc.OversampleV = 3;
+    fc.PixelSnapH  = false;
+
+    // Font atlas — indices must stay stable (mainMenu.cpp references by index)
+    io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_18pt-Regular.ttf",     18.0f, &fc); // [0]
+    io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_18pt-Regular.ttf",     15.0f, &fc); // [1]
+    io.Fonts->AddFontFromFileTTF("assets/fonts/Inter_18pt-Regular.ttf",     11.0f, &fc); // [2]
+    io.Fonts->AddFontFromFileTTF("assets/fonts/Geologica_Auto-Regular.ttf", 24.0f, &fc); // [3]
+    io.Fonts->AddFontFromFileTTF("assets/fonts/Geologica_Auto-Regular.ttf", 20.0f, &fc); // [4]
+    io.Fonts->AddFontFromFileTTF("assets/fonts/Geologica_Auto-Regular.ttf", 58.0f, &fc); // [5]
+
+    // Theme
     ImGuiStyle& style = ImGui::GetStyle();
-    ImVec4* colors = style.Colors;
+    auto& col = style.Colors;
+    col[ImGuiCol_WindowBg]       = { 21/255.f, 21/255.f, 21/255.f, 1.f };
+    col[ImGuiCol_ChildBg]        = col[ImGuiCol_WindowBg];
+    col[ImGuiCol_PopupBg]        = col[ImGuiCol_WindowBg];
+    col[ImGuiCol_Text]           = { 1.f, 1.f, 1.f, 1.f };
+    col[ImGuiCol_Border]         = { 0, 0, 0, 0 };
+    col[ImGuiCol_BorderShadow]   = { 0, 0, 0, 0 };
+    col[ImGuiCol_Button]         = { 0, 0, 0, 0 };
+    col[ImGuiCol_ButtonHovered]  = { 0, 0, 0, 0 };
+    col[ImGuiCol_ButtonActive]   = { 0, 0, 0, 0 };
+    col[ImGuiCol_FrameBg]        = { 0.11f, 0.11f, 0.11f, 1.f };
+    col[ImGuiCol_FrameBgHovered] = col[ImGuiCol_FrameBg];
+    col[ImGuiCol_FrameBgActive]  = col[ImGuiCol_FrameBg];
 
-    ImVec4 bg = ImVec4(0.05f, 0.05f, 0.05f, 1.00f);        // #0D0D0D
-    ImVec4 surface = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);   // #1E1E1E
-    ImVec4 interact = ImVec4(0.15f, 0.15f, 0.15f, 1.00f);
-    ImVec4 accent = ImVec4(0.80f, 1.00f, 0.00f, 1.00f);    // #CCFF00
-    ImVec4 accent_hover = ImVec4(0.85f, 1.00f, 0.20f, 1.00f);
-    ImVec4 accent_active = ImVec4(0.70f, 0.90f, 0.00f, 1.00f);
-    ImVec4 text_primary = ImVec4(1.00f, 1.00f, 1.00f, 1.00f); // #FFFFFF
-    ImVec4 text_secondary = ImVec4(0.55f, 0.55f, 0.58f, 1.00f); // #8E8E93
+    style.WindowPadding    = { 0, 0 };
+    style.FramePadding     = { 0, 0 };
+    style.ItemSpacing      = { 0, 0 };
+    style.ItemInnerSpacing = { 0, 0 };
+    style.WindowRounding   = 0.f;
+    style.FrameRounding    = 0.f;
+    style.WindowBorderSize = 0.f;
+    style.FrameBorderSize  = 0.f;
 
-    colors[ImGuiCol_WindowBg] = bg;
-    colors[ImGuiCol_ChildBg] = bg;
-    colors[ImGuiCol_PopupBg] = surface;
-    colors[ImGuiCol_Text] = text_primary;
-    colors[ImGuiCol_TextDisabled] = text_secondary;
-    colors[ImGuiCol_FrameBg] = surface;
-    colors[ImGuiCol_FrameBgHovered] = interact;
-    colors[ImGuiCol_FrameBgActive] = interact;
-    colors[ImGuiCol_Button] = surface;
-    colors[ImGuiCol_ButtonHovered] = interact;
-    colors[ImGuiCol_ButtonActive] = interact;
-    colors[ImGuiCol_Header] = surface;
-    colors[ImGuiCol_HeaderHovered] = interact;
-    colors[ImGuiCol_HeaderActive] = interact;
-    colors[ImGuiCol_Border] = bg;
-    colors[ImGuiCol_BorderShadow] = ImVec4(0, 0, 0, 0);
-    colors[ImGuiCol_CheckMark] = accent;
-    colors[ImGuiCol_SliderGrab] = accent;
-    colors[ImGuiCol_SliderGrabActive] = accent_active;
-
-    style.WindowPadding = ImVec2(32, 32);
-    style.FramePadding = ImVec2(16, 10);
-    style.ItemSpacing = ImVec2(24, 24);
-    style.ItemInnerSpacing = ImVec2(12, 12);
-    style.WindowRounding = 12.0f;
-    style.ChildRounding = 10.0f;
-    style.FrameRounding = 8.0f;
-    style.PopupRounding = 8.0f;
-    style.ScrollbarRounding = 8.0f;
-    style.WindowBorderSize = 0.0f;
-    style.FrameBorderSize = 0.0f;
-
-    // Bindings Setup
     ImGui_ImplWin32_Init(hwnd);
     ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-    // Main App Simulation Data
-    bool showTicketingWindow = true;
+    // ── Hero banners (landscape backdrops from TMDB) ──────────────────────────
+    ID3D11ShaderResourceView* heroBanners[3] = {};
+    int heroWidths[3] = {}, heroHeights[3] = {};
+    LoadTextureFromFile(g_pd3dDevice, "assets/posters/laLaLandPoster.jpg",
+        &heroBanners[0], &heroWidths[0], &heroHeights[0]);
+    LoadTextureFromFile(g_pd3dDevice, "assets/posters/littleWomenPoster.jpg",
+        &heroBanners[1], &heroWidths[1], &heroHeights[1]);
+    LoadTextureFromFile(g_pd3dDevice, "assets/posters/theLittlePrincePoster.jpg",
+        &heroBanners[2], &heroWidths[2], &heroHeights[2]);
+
+    // ── Posters (local files) ─────────────────────────────────────────────────
+    const int totalPosters = 9;
+    ID3D11ShaderResourceView* posters[totalPosters] = {};
+    int posterWidths[totalPosters] = {}, posterHeights[totalPosters] = {};
+    const char* posterFiles[totalPosters] = {
+        "assets/posters/10ThingsIHateAboutYouPoster.jpg",
+        "assets/posters/deadPoetsSocietyPoster.jpg",
+        "assets/posters/laLaLandPoster.jpg",
+        "assets/posters/littleWomenPoster.jpg",
+        "assets/posters/matildaPoster.jpg",
+        "assets/posters/theDramaPoster.jpg",
+        "assets/posters/theLittlePrincePoster.jpg",
+        "assets/posters/thePrincessDiariesPoster.jpg",
+        "assets/posters/theTerminalPoster.jpg"
+    };
+    for (int i = 0; i < totalPosters; i++)
+        LoadTextureFromFile(g_pd3dDevice, posterFiles[i],
+                            &posters[i], &posterWidths[i], &posterHeights[i]);
+
+    // ── Icons — tries PNG files; SVGs fall back to programmatic drawing ───────
+    // To activate an icon: convert its SVG to PNG with the same base name
+    // (e.g. favoriteButton.svg → favoriteButton.png) and drop it in assets/icons/
+    ID3D11ShaderResourceView* playIconTex = nullptr; int playIconW = 0, playIconH = 0;
+    ID3D11ShaderResourceView* favIconTex  = nullptr; int favIconW  = 0, favIconH  = 0;
+    ID3D11ShaderResourceView* leftArrTex  = nullptr; int leftArrW  = 0, leftArrH  = 0;
+    ID3D11ShaderResourceView* rightArrTex = nullptr; int rightArrW = 0, rightArrH = 0;
+    LoadTextureFromFile(g_pd3dDevice, "assets/icons/playButton.png",       &playIconTex, &playIconW, &playIconH);
+    LoadTextureFromFile(g_pd3dDevice, "assets/icons/favoriteButton.png",   &favIconTex,  &favIconW,  &favIconH);
+    LoadTextureFromFile(g_pd3dDevice, "assets/icons/leftArrowButton.png",  &leftArrTex,  &leftArrW,  &leftArrH);
+    LoadTextureFromFile(g_pd3dDevice, "assets/icons/rightArrowButton.png", &rightArrTex, &rightArrW, &rightArrH);
+
     int selectedMovieIndex = -1;
-    int currentHeroIndex = 0;
-    const char* movies[] = { "Dune: Part Two", "Interstellar", "Blade Runner 2049" };
+    int currentHeroIndex   = 0;
 
-    // Fetch the hero banner directly from The Movie Database (TMDB) image service API
-    ID3D11ShaderResourceView* heroBanners[3] = { nullptr, nullptr, nullptr };
-    int heroWidths[3] = { 0, 0, 0 };
-    int heroHeights[3] = { 0, 0, 0 };
-    // Dune: Part Two backdrop API Image
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0PX.jpg", &heroBanners[0], &heroWidths[0], &heroHeights[0]);
-    // Interstellar backdrop
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/original/xJHokMbljvjEVAZSZA15yCEeWAE.jpg", &heroBanners[1], &heroWidths[1], &heroHeights[1]);
-    // Blade Runner 2049 backdrop
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/original/ilRyazdoxigpjGQupCGhnioDV59.jpg", &heroBanners[2], &heroWidths[2], &heroHeights[2]);
-
-    // Load poster images
-    ID3D11ShaderResourceView* posters[6] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-    int posterWidths[6] = { 0, 0, 0, 0, 0, 0 };
-    int posterHeights[6] = { 0, 0, 0, 0, 0, 0 };
-    
-    // Dune Part Two Poster
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2JGqqUT1O.jpg", &posters[0], &posterWidths[0], &posterHeights[0]);
-    // Interstellar Poster
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/gEU2QlsUUQYKnUKtiI00Sn8vRXz.jpg", &posters[1], &posterWidths[1], &posterHeights[1]);
-    // Blade Runner 2049 Poster
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/gajva2L0rPYkEWjzgFlBXCAVBE5.jpg", &posters[2], &posterWidths[2], &posterHeights[2]);
-    // The Dark Knight
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg", &posters[3], &posterWidths[3], &posterHeights[3]);
-    // Inception
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/9gk7adHYeDvHkCSEqAvQNLV5Uge.jpg", &posters[4], &posterWidths[4], &posterHeights[4]);
-    // The Matrix
-    LoadTextureFromURL(g_pd3dDevice, "https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg", &posters[5], &posterWidths[5], &posterHeights[5]);
-
-
-    // 4. Windows Event Loop
     bool running = true;
     while (running) {
         MSG msg;
         while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
             ::TranslateMessage(&msg);
             ::DispatchMessage(&msg);
-            if (msg.message == WM_QUIT)
-                running = false;
+            if (msg.message == WM_QUIT) running = false;
         }
         if (!running) break;
 
-        // 5. Start ImGui Frame Layout
         ImGui_ImplDX11_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        // --- RENDER CINEMA APP LAYOUT ---
-        RenderMainMenu(heroBanners, heroWidths, heroHeights, currentHeroIndex, posters, posterWidths, posterHeights, selectedMovieIndex);
+        RenderMainMenu(heroBanners, heroWidths, heroHeights, currentHeroIndex,
+            posters, posterWidths, posterHeights, selectedMovieIndex,
+            playIconTex, playIconW, playIconH,
+            favIconTex,  favIconW,  favIconH,
+            leftArrTex,  leftArrW,  leftArrH,
+            rightArrTex, rightArrW, rightArrH);
 
-        // 6. Finalization & Frame Presentation
         ImGui::Render();
-        const float clear_color_with_alpha[4] = { 0.05f, 0.05f, 0.05f, 1.00f };
+        const float cc[4] = { 21/255.f, 21/255.f, 21/255.f, 1.f };
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
-        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, clear_color_with_alpha);
+        g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, cc);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
-
-        g_pSwapChain->Present(1, 0); // VSync enabled
+        g_pSwapChain->Present(1, 0);
     }
 
-    // 7. Core Shutdown Procedures
     ImGui_ImplDX11_Shutdown();
     ImGui_ImplWin32_Shutdown();
     ImGui::DestroyContext();
-
     CleanupDeviceD3D();
     ::DestroyWindow(hwnd);
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
-
     return 0;
 }
 
-// Helper engine primitives to construct the DX11 context cleanly
 bool CreateDeviceD3D(HWND hWnd) {
-    DXGI_SWAP_CHAIN_DESC sd;
-    ZeroMemory(&sd, sizeof(sd));
-    sd.BufferCount = 2;
-    sd.BufferDesc.Width = 0;
-    sd.BufferDesc.Height = 0;
-    sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    sd.BufferDesc.RefreshRate.Numerator = 60;
+    DXGI_SWAP_CHAIN_DESC sd = {};
+    sd.BufferCount                        = 2;
+    sd.BufferDesc.Format                  = DXGI_FORMAT_R8G8B8A8_UNORM;
+    sd.BufferDesc.RefreshRate.Numerator   = 60;
     sd.BufferDesc.RefreshRate.Denominator = 1;
-    sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-    sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    sd.OutputWindow = hWnd;
-    sd.SampleDesc.Count = 1;
-    sd.SampleDesc.Quality = 0;
-    sd.Windowed = TRUE;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+    sd.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+    sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    sd.OutputWindow                       = hWnd;
+    sd.SampleDesc.Count                   = 1;
+    sd.Windowed                           = TRUE;
+    sd.SwapEffect                         = DXGI_SWAP_EFFECT_DISCARD;
 
-    UINT createDeviceFlags = 0;
-    D3D_FEATURE_LEVEL featureLevel;
-    const D3D_FEATURE_LEVEL featureLevelArray[2] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0 };
-    HRESULT res = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags, featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain, &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-    if (res != S_OK) return false;
-
+    D3D_FEATURE_LEVEL fl;
+    const D3D_FEATURE_LEVEL fla[] = { D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_0 };
+    HRESULT hr = D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0,
+        fla, 2, D3D11_SDK_VERSION, &sd,
+        &g_pSwapChain, &g_pd3dDevice, &fl, &g_pd3dDeviceContext);
+    if (hr != S_OK) return false;
     CreateRenderTarget();
     return true;
 }
 
 void CleanupDeviceD3D() {
     CleanupRenderTarget();
-    if (g_pSwapChain) { g_pSwapChain->Release(); g_pSwapChain = nullptr; }
+    if (g_pSwapChain)        { g_pSwapChain->Release();        g_pSwapChain        = nullptr; }
     if (g_pd3dDeviceContext) { g_pd3dDeviceContext->Release(); g_pd3dDeviceContext = nullptr; }
-    if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
+    if (g_pd3dDevice)        { g_pd3dDevice->Release();        g_pd3dDevice        = nullptr; }
 }
 
 void CreateRenderTarget() {
@@ -273,21 +263,18 @@ void CleanupRenderTarget() {
     if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
 }
 
-// Low level intercept windows processing events to handle mouse hooks/inputs
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-        return true;
-
+    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam)) return true;
     switch (msg) {
     case WM_SIZE:
-        if (g_pd3dDevice != nullptr && wParam != SIZE_MINIMIZED) {
+        if (g_pd3dDevice && wParam != SIZE_MINIMIZED) {
             CleanupRenderTarget();
-            g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
+            g_pSwapChain->ResizeBuffers(0, LOWORD(lParam), HIWORD(lParam), DXGI_FORMAT_UNKNOWN, 0);
             CreateRenderTarget();
         }
         return 0;
     case WM_SYSCOMMAND:
-        if ((wParam & 0xFFF0) == SC_KEYMENU) return 0; // Disable ALT application menu focus
+        if ((wParam & 0xFFF0) == SC_KEYMENU) return 0;
         break;
     case WM_DESTROY:
         ::PostQuitMessage(0);
@@ -295,9 +282,3 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }
-
-
-
-
-
-

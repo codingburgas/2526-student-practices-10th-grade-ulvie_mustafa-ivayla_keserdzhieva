@@ -3,7 +3,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="../cinema_business/cinema_business.vcxproj" Id="44018464-f42f-4b70-bfa0-4441e404f5be" />
   <Project Path="../cinema_data/cinema_data.vcxproj" Id="624e3a5b-2bb1-4d66-897b-90b1983aeba5" />
+  <Project Path="../cinema_business/cinema_business.vcxproj" Id="44018464-f42f-4b70-bfa0-4441e404f5be" />
   <Project Path="cinema_presentation.vcxproj" Id="f5c696c0-f04e-4e13-896f-f9b4aabb60ee" />
 </Solution>
