@@ -83,10 +83,12 @@ static void DrawProfile(ImDrawList* dl, ImVec2 c, float r, ImU32 col) {
 }
 
 // ── Poster card with smooth hover animation ───────────────────────────────────
-static void DrawPoster(ImDrawList* dl, ImVec2 pos, ImVec2 sz,
+static bool DrawPoster(ImDrawList* dl, ImVec2 pos, ImVec2 sz,
                        ID3D11ShaderResourceView* tex, const char* title,
                        ID3D11ShaderResourceView* playTex, float& hoverT) {
     constexpr float CR = 7.0f;
+
+    bool playClicked = false;
 
     if (tex)
         dl->AddImageRounded((ImTextureID)tex, pos, { pos.x + sz.x, pos.y + sz.y },
@@ -147,7 +149,13 @@ static void DrawPoster(ImDrawList* dl, ImVec2 pos, ImVec2 sz,
         // Accent border
         dl->AddRect(pos, { pos.x + sz.x, pos.y + sz.y },
             IM_COL32(233, 131, 160, (int)(t * 185)), CR, 0, 1.5f);
+
+        // Invisible button over the play circle to catch clicks
+        ImGui::SetCursorScreenPos({ pC.x - bR, pC.y - bR });
+        ImGui::InvisibleButton(("pp_" + std::string(title)).c_str(), { bR * 2, bR * 2 });
+        if (ImGui::IsItemClicked()) playClicked = true;
     }
+    return playClicked;
 }
 
 static std::string TodayStr() {
@@ -173,7 +181,7 @@ static void AddImageCover(ImDrawList* dl, ImTextureID tex,
 
 void RenderMainMenu(
     ID3D11ShaderResourceView** heroBanners, int* heroWidths, int* heroHeights, int& currentHeroIndex,
-    ID3D11ShaderResourceView** posters,     int* /*posterWidths*/, int* /*posterHeights*/, int& /*selectedMovieIndex*/,
+    ID3D11ShaderResourceView** posters,     int* /*posterWidths*/, int* /*posterHeights*/, int& selectedMovieIndex,
     ID3D11ShaderResourceView*  playIconTex,     int /*playIconW*/,  int /*playIconH*/,
     ID3D11ShaderResourceView*  favoriteIconTex, int /*favIconW*/,   int /*favIconH*/,
     ID3D11ShaderResourceView*  leftArrowTex,    int /*leftArrW*/,   int /*leftArrH*/,
@@ -380,10 +388,15 @@ void RenderMainMenu(
             { playC.x + BTN_R * 0.58f, playC.y + BTN_R * 0.58f });
     else
         DrawPlay(dl, playC, BTN_R * 0.58f, IM_COL32(255,255,255,255));
+    // hero index → poster/movie index mapping: La La Land=2, Little Women=3, Little Prince=6
+    static const int s_heroToMovieIdx[3] = { 2, 3, 6 };
+
     ImGui::SetCursorScreenPos({ playC.x - BTN_R, playC.y - BTN_R });
     ImGui::InvisibleButton("playBtn", { BTN_R * 2, BTN_R * 2 });
     if (ImGui::IsItemHovered())
         dl->AddCircleFilled(playC, BTN_R, IM_COL32(233,131,160,210), 32);
+    if (ImGui::IsItemClicked())
+        selectedMovieIndex = s_heroToMovieIdx[currentHeroIndex];
 
     dl->AddCircleFilled(heartC, BTN_R, IM_COL32(233,131,160,138), 32);
     if (favoriteIconTex)
@@ -462,9 +475,10 @@ void RenderMainMenu(
         int   row = i / COLS, col = i % COLS;
         float px  = gridX + col * (P_W + P_GAP);
         float py  = gridY + row * (P_H + P_GAP);
-        DrawPoster(dl, { px, py }, { P_W, P_H },
-            (posters && i < TOTAL) ? posters[i] : nullptr,
-            ptitles[i], playIconTex, s_hoverT[i]);
+        if (DrawPoster(dl, { px, py }, { P_W, P_H },
+                (posters && i < TOTAL) ? posters[i] : nullptr,
+                ptitles[i], playIconTex, s_hoverT[i]))
+            selectedMovieIndex = i;
     }
 
     int   rows   = (TOTAL + COLS - 1) / COLS;

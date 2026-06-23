@@ -11,7 +11,7 @@
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// Forward declaration — parameter names mirror the icon files in assets/icons/
+// Forward declarations
 void RenderMainMenu(
     ID3D11ShaderResourceView** heroBanners, int* heroWidths, int* heroHeights, int& currentHeroIndex,
     ID3D11ShaderResourceView** posters,     int* posterWidths, int* posterHeights, int& selectedMovieIndex,
@@ -19,6 +19,10 @@ void RenderMainMenu(
     ID3D11ShaderResourceView*  favoriteIconTex, int favIconW,   int favIconH,
     ID3D11ShaderResourceView*  leftArrowTex,    int leftArrW,   int leftArrH,
     ID3D11ShaderResourceView*  rightArrowTex,   int rightArrW,  int rightArrH);
+
+void RenderMovieDetail(
+    int movieIndex, bool& goBack,
+    ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
 
 static ID3D11Device*           g_pd3dDevice           = nullptr;
 static ID3D11DeviceContext*    g_pd3dDeviceContext    = nullptr;
@@ -198,12 +202,19 @@ int main(int, char**) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        RenderMainMenu(heroBanners, heroWidths, heroHeights, currentHeroIndex,
-            posters, posterWidths, posterHeights, selectedMovieIndex,
-            playIconTex, playIconW, playIconH,
-            favIconTex,  favIconW,  favIconH,
-            leftArrTex,  leftArrW,  leftArrH,
-            rightArrTex, rightArrW, rightArrH);
+        if (selectedMovieIndex >= 0) {
+            bool goBack = false;
+            RenderMovieDetail(selectedMovieIndex, goBack,
+                posters, posterWidths, posterHeights);
+            if (goBack) selectedMovieIndex = -1;
+        } else {
+            RenderMainMenu(heroBanners, heroWidths, heroHeights, currentHeroIndex,
+                posters, posterWidths, posterHeights, selectedMovieIndex,
+                playIconTex, playIconW, playIconH,
+                favIconTex,  favIconW,  favIconH,
+                leftArrTex,  leftArrW,  leftArrH,
+                rightArrTex, rightArrW, rightArrH);
+        }
 
         ImGui::Render();
         const float cc[4] = { 21/255.f, 21/255.f, 21/255.f, 1.f };

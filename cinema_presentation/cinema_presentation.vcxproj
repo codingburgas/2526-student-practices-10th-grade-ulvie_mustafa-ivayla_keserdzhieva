@@ -159,6 +159,7 @@ d3dcompiler.lib;odbc32.lib</AdditionalDependencies>
     <ClCompile Include="imGUI\imgui_widgets.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\mainMenu.cpp" />
+    <ClCompile Include="src\movieDetail.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="imGUI\imconfig.h" />
