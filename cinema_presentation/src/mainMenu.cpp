@@ -4,6 +4,8 @@
 #include <ctime>
 #include <cmath>
 #include "UserService.h"
+#include <future>
+#include <chrono>
 
 // Palette.
 static constexpr ImU32 C_BG     = IM_COL32( 21,  21,  21, 255); // #151515
@@ -240,7 +242,9 @@ void RenderMainMenu(
     static char s_surnameBuf[256] = {};
     static char s_unameBuf[256]   = {};
     static char s_passBuf[256]    = {};
-    static int  s_resultCode      = 0;  // 0=none  1=success  -1=failure
+    static int               s_resultCode  = 0;    // 0=none  1=success  -1=failure
+    static bool              s_authPending = false;
+    static std::future<bool> s_authFuture;
 
     // Per-poster hover animation values (persistent across frames)
     static float s_hoverT[9] = {};
@@ -589,6 +593,7 @@ void RenderMainMenu(
             if (mp.x < mx || mp.x > mx + M_W || mp.y < my || mp.y > my + M_H) {
                 s_showLoginModal = false;
                 s_resultCode     = 0;
+                s_authPending    = false;
             }
         }
 
@@ -675,20 +680,34 @@ void RenderMainMenu(
         ImGui::PopFont();
 
         // ── Submit button ─────────────────────────────────────────────────────
+        // Poll background auth task
+        if (s_authPending && s_authFuture.valid() &&
+            s_authFuture.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
+            s_resultCode  = s_authFuture.get() ? 1 : -1;
+            s_authPending = false;
+        }
+
         ImVec2 subTL = { fieldX, curY }, subBR = { fieldX + fieldW, curY + 44.0f };
         ImGui::SetCursorScreenPos(subTL);
         ImGui::InvisibleButton("submitBtn", { fieldW, 44.0f });
         bool subHov = ImGui::IsItemHovered();
-        if (ImGui::IsItemClicked() && userSvc) {
-            if (s_loginTab == 0)
-                s_resultCode = userSvc->Login(s_unameBuf, s_passBuf) ? 1 : -1;
-            else
-                s_resultCode = userSvc->RegisterUser(s_nameBuf, s_surnameBuf, s_unameBuf, s_passBuf) ? 1 : -1;
+        if (ImGui::IsItemClicked() && userSvc && !s_authPending) {
+            s_resultCode  = 0;
+            s_authPending = true;
+            std::string nm  = s_nameBuf, sn = s_surnameBuf;
+            std::string un  = s_unameBuf, pw = s_passBuf;
+            int         tab = s_loginTab;
+            s_authFuture = std::async(std::launch::async, [=]() -> bool {
+                return (tab == 0) ? userSvc->Login(un, pw)
+                                  : userSvc->RegisterUser(nm, sn, un, pw);
+            });
         }
-        dl->AddRectFilled(subTL, subBR,
-            subHov ? IM_COL32(245, 70, 120, 255) : C_TITLE, 8.0f);
+        ImU32 subCol = s_authPending ? IM_COL32(120, 35, 75, 255)
+                     : subHov        ? IM_COL32(245, 70, 120, 255)
+                                     : C_TITLE;
+        dl->AddRectFilled(subTL, subBR, subCol, 8.0f);
         ImGui::PushFont(F[0]);
-        const char* subLabel = (s_loginTab == 0) ? "Log In" : "Sign Up";
+        const char* subLabel = s_authPending ? "..." : (s_loginTab == 0 ? "Log In" : "Sign Up");
         ImVec2 subLblSz = ImGui::CalcTextSize(subLabel);
         dl->AddText({ subTL.x + (fieldW  - subLblSz.x) * 0.5f,
                       subTL.y + (44.0f   - subLblSz.y) * 0.5f },

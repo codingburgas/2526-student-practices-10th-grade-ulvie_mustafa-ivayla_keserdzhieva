@@ -20,6 +20,7 @@ SqlUserRepository::~SqlUserRepository() {
 bool SqlUserRepository::Connect() {
     if (hDbc == SQL_NULL_HDBC)
         SQLAllocHandle(SQL_HANDLE_DBC, hEnv, &hDbc);
+    SQLSetConnectAttr(hDbc, SQL_ATTR_LOGIN_TIMEOUT, (SQLPOINTER)5, 0);
     SQLCHAR out[1024]; SQLSMALLINT outLen;
     return SQL_SUCCEEDED(SQLDriverConnectA(hDbc, nullptr,
         (SQLCHAR*)CONN_STR, SQL_NTS, out, sizeof(out), &outLen, SQL_DRIVER_NOPROMPT));
