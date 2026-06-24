@@ -234,6 +234,8 @@ void RenderMainMenu(
     static bool s_showLoginModal  = false;
     static int  s_modalOpenFrame  = -9999;
     static int  s_loginTab        = 0;   // 0 = Log In, 1 = Sign Up
+    static char s_nameBuf[256]    = {};
+    static char s_surnameBuf[256] = {};
     static char s_unameBuf[256]   = {};
     static char s_passBuf[256]    = {};
 
@@ -569,7 +571,8 @@ void RenderMainMenu(
                           IM_COL32(0, 0, 0, 155));
 
         // Modal dimensions
-        constexpr float M_W = 480.0f, M_H = 504.0f;
+        constexpr float M_W = 480.0f;
+        float           M_H = (s_loginTab == 0) ? 504.0f : 582.0f;
         float mx = orig.x + (winW - M_W) * 0.5f;
         float my = orig.y + (winH - M_H) * 0.5f;
         ImVec2 mTL = { mx, my }, mBR = { mx + M_W, my + M_H };
@@ -627,6 +630,23 @@ void RenderMainMenu(
         ImGui::PushStyleColor(ImGuiCol_TextDisabled,   ImVec4(0.44f, 0.44f, 0.50f, 1.f));
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,  ImVec2(12.0f, 10.0f));
+
+        // Sign Up only: Name | Surname side by side
+        if (s_loginTab == 1) {
+            float halfW = (fieldW - 12.0f) * 0.5f;
+            dl->AddText({ fieldX,                  curY }, C_MUTED, "Name");
+            dl->AddText({ fieldX + halfW + 12.0f,  curY }, C_MUTED, "Surname");
+            curY += ImGui::CalcTextSize("Name").y + 6.0f;
+            ImGui::SetCursorScreenPos({ fieldX, curY });
+            ImGui::SetNextItemWidth(halfW);
+            ImGui::InputTextWithHint("##name", "Enter your Name",
+                                     s_nameBuf, sizeof(s_nameBuf));
+            ImGui::SetCursorScreenPos({ fieldX + halfW + 12.0f, curY });
+            ImGui::SetNextItemWidth(halfW);
+            ImGui::InputTextWithHint("##surname", "Enter your Surname",
+                                     s_surnameBuf, sizeof(s_surnameBuf));
+            curY += 40.0f + 14.0f;
+        }
 
         dl->AddText({ fieldX, curY }, C_MUTED, "Username");
         curY += ImGui::CalcTextSize("Username").y + 6.0f;
