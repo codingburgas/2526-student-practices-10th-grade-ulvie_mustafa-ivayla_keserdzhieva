@@ -1,0 +1,12 @@
+USE CinemaDB;
+GO
+
+CREATE TABLE Users (
+    Id        INT          IDENTITY(1,1) PRIMARY KEY,
+    Name      NVARCHAR(256) NOT NULL,
+    Surname   NVARCHAR(256) NOT NULL,
+    Username  NVARCHAR(256) NOT NULL UNIQUE,
+    Password  NVARCHAR(256) NOT NULL,
+    CreatedAt DATETIME      NOT NULL DEFAULT GETDATE()
+);
+GO

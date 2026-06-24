@@ -148,6 +148,9 @@ d3dcompiler.lib;odbc32.lib</AdditionalDependencies>
     <ProjectReference Include="..\cinema_business\cinema_business.vcxproj">
       <Project>{44018464-f42f-4b70-bfa0-4441e404f5be}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\cinema_data\cinema_data.vcxproj">
+      <Project>{624e3a5b-2bb1-4d66-897b-90b1983aeba5}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="imGUI\imgui.cpp" />

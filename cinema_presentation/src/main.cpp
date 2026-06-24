@@ -6,6 +6,10 @@
 #include <urlmon.h>
 #pragma comment(lib, "urlmon.lib")
 
+#include "SqlUserRepository.h"
+#include "UserService.h"
+#include <memory>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -23,7 +27,8 @@ void RenderMainMenu(
     ID3D11ShaderResourceView* blurBgSrv,
     ID3D11ShaderResourceView* googleIconTex,
     ID3D11ShaderResourceView* appleIconTex,
-    ID3D11ShaderResourceView* msIconTex);
+    ID3D11ShaderResourceView* msIconTex,
+    UserService* userSvc);
 
 void RenderMovieDetail(
     int movieIndex, bool& goBack,
@@ -199,6 +204,9 @@ int main(int, char**) {
     LoadTextureFromFile(g_pd3dDevice, "assets/icons/appleIcon.png",     &appleIconTex,  &appleIconW,  &appleIconH);
     LoadTextureFromFile(g_pd3dDevice, "assets/icons/microsoftIcon.png", &msIconTex,     &msIconW,     &msIconH);
 
+    auto userRepo = std::make_shared<SqlUserRepository>();
+    UserService userSvc(userRepo);
+
     int selectedMovieIndex = -1;
     int currentHeroIndex   = 0;
     bool showModal         = false;
@@ -230,7 +238,8 @@ int main(int, char**) {
                 leftArrTex,  leftArrW,  leftArrH,
                 rightArrTex, rightArrW, rightArrH,
                 showModal, g_blurCapSRV,
-                googleIconTex, appleIconTex, msIconTex);
+                googleIconTex, appleIconTex, msIconTex,
+                &userSvc);
         }
 
         ImGui::Render();

@@ -3,8 +3,9 @@
 #include <string>
 #include <ctime>
 #include <cmath>
+#include "UserService.h"
 
-// Palette
+// Palette.
 static constexpr ImU32 C_BG     = IM_COL32( 21,  21,  21, 255); // #151515
 static constexpr ImU32 C_LOGO   = IM_COL32(163,  49,  82, 255); // #A33152
 static constexpr ImU32 C_MUTED  = IM_COL32(144, 136, 144, 255); // #908890
@@ -228,7 +229,8 @@ void RenderMainMenu(
     ID3D11ShaderResourceView* blurBgSrv,
     ID3D11ShaderResourceView* googleIconTex,
     ID3D11ShaderResourceView* appleIconTex,
-    ID3D11ShaderResourceView* msIconTex) {
+    ID3D11ShaderResourceView* msIconTex,
+    UserService* userSvc) {
 
     // Login modal state
     static bool s_showLoginModal  = false;
@@ -238,6 +240,7 @@ void RenderMainMenu(
     static char s_surnameBuf[256] = {};
     static char s_unameBuf[256]   = {};
     static char s_passBuf[256]    = {};
+    static int  s_resultCode      = 0;  // 0=none  1=success  -1=failure
 
     // Per-poster hover animation values (persistent across frames)
     static float s_hoverT[9] = {};
@@ -583,8 +586,10 @@ void RenderMainMenu(
         // Close when clicking outside (guard: skip the frame the modal was opened)
         if (ImGui::IsMouseClicked(0) && ImGui::GetFrameCount() > s_modalOpenFrame) {
             ImVec2 mp = ImGui::GetMousePos();
-            if (mp.x < mx || mp.x > mx + M_W || mp.y < my || mp.y > my + M_H)
+            if (mp.x < mx || mp.x > mx + M_W || mp.y < my || mp.y > my + M_H) {
                 s_showLoginModal = false;
+                s_resultCode     = 0;
+            }
         }
 
         // ── Tabs ─────────────────────────────────────────────────────────────
@@ -674,6 +679,12 @@ void RenderMainMenu(
         ImGui::SetCursorScreenPos(subTL);
         ImGui::InvisibleButton("submitBtn", { fieldW, 44.0f });
         bool subHov = ImGui::IsItemHovered();
+        if (ImGui::IsItemClicked() && userSvc) {
+            if (s_loginTab == 0)
+                s_resultCode = userSvc->Login(s_unameBuf, s_passBuf) ? 1 : -1;
+            else
+                s_resultCode = userSvc->RegisterUser(s_nameBuf, s_surnameBuf, s_unameBuf, s_passBuf) ? 1 : -1;
+        }
         dl->AddRectFilled(subTL, subBR,
             subHov ? IM_COL32(245, 70, 120, 255) : C_TITLE, 8.0f);
         ImGui::PushFont(F[0]);
@@ -683,7 +694,22 @@ void RenderMainMenu(
                       subTL.y + (44.0f   - subLblSz.y) * 0.5f },
                     IM_COL32(255, 255, 255, 255), subLabel);
         ImGui::PopFont();
-        curY += 44.0f + 16.0f;
+        curY += 44.0f + 8.0f;
+
+        // Result feedback
+        if (s_resultCode != 0) {
+            ImGui::PushFont(F[1]);
+            const char* msg = (s_resultCode > 0)
+                ? (s_loginTab == 0 ? "Logged in successfully!" : "Account created successfully!")
+                : (s_loginTab == 0 ? "Invalid username or password." : "Registration failed. Username may already exist.");
+            ImU32 msgCol = (s_resultCode > 0) ? IM_COL32(100, 220, 130, 255) : IM_COL32(220, 80, 80, 255);
+            ImVec2 msgSz = ImGui::CalcTextSize(msg);
+            dl->AddText({ fieldX + (fieldW - msgSz.x) * 0.5f, curY }, msgCol, msg);
+            ImGui::PopFont();
+            curY += msgSz.y + 8.0f;
+        } else {
+            curY += 8.0f;
+        }
 
         // ── OR divider ────────────────────────────────────────────────────────
         ImGui::PushFont(F[2]); // Inter 11px
