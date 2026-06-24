@@ -137,6 +137,7 @@
   <ItemGroup>
     <ClCompile Include="src\cinema_data.cpp" />
     <ClCompile Include="src\pch.cpp" />
+    <ClCompile Include="src\SmtpMailer.cpp" />
     <ClCompile Include="src\SqlUserRepository.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -144,6 +145,7 @@
     <ClInclude Include="include\ITicketRepository.h" />
     <ClInclude Include="include\IUserRepository.h" />
     <ClInclude Include="include\pch.h" />
+    <ClInclude Include="include\SmtpMailer.h" />
     <ClInclude Include="include\SqlTicketRepository.h" />
     <ClInclude Include="include\SqlUserRepository.h" />
   </ItemGroup>

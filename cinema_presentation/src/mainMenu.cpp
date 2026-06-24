@@ -240,9 +240,17 @@ void RenderMainMenu(
     static int  s_loginTab        = 0;   // 0 = Log In, 1 = Sign Up
     static char s_nameBuf[256]    = {};
     static char s_surnameBuf[256] = {};
-    static char s_unameBuf[256]   = {};
-    static char s_passBuf[256]    = {};
-    static int               s_resultCode  = 0;    // 0=none  1=success  -1=failure
+    static char s_unameBuf[256]    = {};
+    static char s_passBuf[256]     = {};
+    static char s_emailBuf[256]    = {};
+    static char s_companyBuf[256]  = {};
+    static char s_cityBuf[256]     = {};
+    static char s_verifyBuf[32]    = {};
+    static int               s_signupRole  = 0;    // 0=customer  1=admin
+    static bool              s_codeSent    = false;
+    static int               s_authAction  = 0;    // 1=sendCode  2=register/login
+    static int               s_resultCode  = 0;    // 0=none  1=ok  -1=fail  -2=smtp fail  -3=validation
+    static char              s_validMsg[256] = {};
     static bool              s_authPending = false;
     static std::future<bool> s_authFuture;
 
@@ -579,7 +587,9 @@ void RenderMainMenu(
 
         // Modal dimensions
         constexpr float M_W = 480.0f;
-        float           M_H = (s_loginTab == 0) ? 504.0f : 582.0f;
+        float M_H = (s_loginTab == 0) ? 504.0f
+                  : (s_signupRole == 0) ? 760.0f   // customer
+                  :                       880.0f;   // admin (extra company/city/code/verify)
         float mx = orig.x + (winW - M_W) * 0.5f;
         float my = orig.y + (winH - M_H) * 0.5f;
         ImVec2 mTL = { mx, my }, mBR = { mx + M_W, my + M_H };
@@ -594,6 +604,9 @@ void RenderMainMenu(
                 s_showLoginModal = false;
                 s_resultCode     = 0;
                 s_authPending    = false;
+                s_codeSent       = false;
+                s_authAction     = 0;
+                s_validMsg[0]    = 0;
             }
         }
 
@@ -607,7 +620,7 @@ void RenderMainMenu(
 
         ImGui::SetCursorScreenPos({ liX - 8.0f, tabY - 4.0f });
         ImGui::InvisibleButton("tabLI", { liSz.x + 16.0f, liSz.y + 8.0f });
-        if (ImGui::IsItemClicked()) s_loginTab = 0;
+        if (ImGui::IsItemClicked()) { s_loginTab = 0; s_resultCode = 0; s_codeSent = false; s_validMsg[0] = 0; }
         dl->AddText({ liX, tabY },
             (s_loginTab == 0 || ImGui::IsItemHovered()) ? IM_COL32(255,255,255,255) : C_MUTED,
             "Log In");
@@ -617,7 +630,7 @@ void RenderMainMenu(
 
         ImGui::SetCursorScreenPos({ suX - 8.0f, tabY - 4.0f });
         ImGui::InvisibleButton("tabSU", { suSz.x + 16.0f, suSz.y + 8.0f });
-        if (ImGui::IsItemClicked()) s_loginTab = 1;
+        if (ImGui::IsItemClicked()) { s_loginTab = 1; s_resultCode = 0; s_codeSent = false; s_validMsg[0] = 0; }
         dl->AddText({ suX, tabY },
             (s_loginTab == 1 || ImGui::IsItemHovered()) ? IM_COL32(255,255,255,255) : C_MUTED,
             "Sign Up");
@@ -644,17 +657,15 @@ void RenderMainMenu(
         // Sign Up only: Name | Surname side by side
         if (s_loginTab == 1) {
             float halfW = (fieldW - 12.0f) * 0.5f;
-            dl->AddText({ fieldX,                  curY }, C_MUTED, "Name");
-            dl->AddText({ fieldX + halfW + 12.0f,  curY }, C_MUTED, "Surname");
+            dl->AddText({ fieldX,                 curY }, C_MUTED, "Name");
+            dl->AddText({ fieldX + halfW + 12.0f, curY }, C_MUTED, "Surname");
             curY += ImGui::CalcTextSize("Name").y + 6.0f;
             ImGui::SetCursorScreenPos({ fieldX, curY });
             ImGui::SetNextItemWidth(halfW);
-            ImGui::InputTextWithHint("##name", "Enter your Name",
-                                     s_nameBuf, sizeof(s_nameBuf));
+            ImGui::InputTextWithHint("##name", "Enter your Name", s_nameBuf, sizeof(s_nameBuf));
             ImGui::SetCursorScreenPos({ fieldX + halfW + 12.0f, curY });
             ImGui::SetNextItemWidth(halfW);
-            ImGui::InputTextWithHint("##surname", "Enter your Surname",
-                                     s_surnameBuf, sizeof(s_surnameBuf));
+            ImGui::InputTextWithHint("##surname", "Enter your Surname", s_surnameBuf, sizeof(s_surnameBuf));
             curY += 40.0f + 14.0f;
         }
 
@@ -662,7 +673,7 @@ void RenderMainMenu(
         curY += ImGui::CalcTextSize("Username").y + 6.0f;
         ImGui::SetCursorScreenPos({ fieldX, curY });
         ImGui::SetNextItemWidth(fieldW);
-        ImGui::InputTextWithHint("##uname", "Enter your Email/Username",
+        ImGui::InputTextWithHint("##uname", "Enter your username",
                                  s_unameBuf, sizeof(s_unameBuf));
         curY += 40.0f + 14.0f;
 
@@ -673,44 +684,212 @@ void RenderMainMenu(
         ImGui::InputTextWithHint("##pass", "Enter your password",
                                  s_passBuf, sizeof(s_passBuf),
                                  ImGuiInputTextFlags_Password);
-        curY += 40.0f + 20.0f;
+        curY += 40.0f + 14.0f;
+
+        // ── Sign Up extra fields ───────────────────────────────────────────────
+        if (s_loginTab == 1) {
+            // Email
+            dl->AddText({ fieldX, curY }, C_MUTED, "Email");
+            curY += ImGui::CalcTextSize("Email").y + 6.0f;
+            ImGui::SetCursorScreenPos({ fieldX, curY });
+            ImGui::SetNextItemWidth(fieldW);
+            ImGui::InputTextWithHint("##email", "Enter your email", s_emailBuf, sizeof(s_emailBuf));
+            curY += 40.0f + 14.0f;
+
+            // Role selector
+            dl->AddText({ fieldX, curY }, C_MUTED, "Choose your role");
+            curY += ImGui::CalcTextSize("Role").y + 6.0f;
+            float halfW = (fieldW - 12.0f) * 0.5f;
+
+            // Customer button
+            ImVec2 rcTL = { fieldX, curY }, rcBR = { fieldX + halfW, curY + 36.0f };
+            ImGui::SetCursorScreenPos(rcTL);
+            ImGui::InvisibleButton("roleCustomer", { halfW, 36.0f });
+            if (ImGui::IsItemClicked()) { s_signupRole = 0; s_resultCode = 0; s_codeSent = false; s_validMsg[0] = 0; }
+            bool rcHov = ImGui::IsItemHovered();
+            dl->AddRectFilled(rcTL, rcBR,
+                (s_signupRole == 0) ? C_TITLE : (rcHov ? IM_COL32(50,50,58,255) : IM_COL32(38,38,44,255)), 8.0f);
+            dl->AddRect(rcTL, rcBR, (s_signupRole == 0) ? C_TITLE : IM_COL32(75,75,85,255), 8.0f, 0, 1.0f);
+            {
+                ImVec2 lsz = ImGui::CalcTextSize("Customer");
+                dl->AddText({ rcTL.x + (halfW - lsz.x) * 0.5f, rcTL.y + (36.0f - lsz.y) * 0.5f },
+                             IM_COL32(255,255,255,255), "Customer");
+            }
+
+            // Admin button
+            ImVec2 raTL = { fieldX + halfW + 12.0f, curY }, raBR = { fieldX + fieldW, curY + 36.0f };
+            ImGui::SetCursorScreenPos(raTL);
+            ImGui::InvisibleButton("roleAdmin", { halfW, 36.0f });
+            if (ImGui::IsItemClicked()) { s_signupRole = 1; s_resultCode = 0; s_codeSent = false; s_validMsg[0] = 0; }
+            bool raHov = ImGui::IsItemHovered();
+            dl->AddRectFilled(raTL, raBR,
+                (s_signupRole == 1) ? C_TITLE : (raHov ? IM_COL32(50,50,58,255) : IM_COL32(38,38,44,255)), 8.0f);
+            dl->AddRect(raTL, raBR, (s_signupRole == 1) ? C_TITLE : IM_COL32(75,75,85,255), 8.0f, 0, 1.0f);
+            {
+                ImVec2 lsz = ImGui::CalcTextSize("Admin");
+                dl->AddText({ raTL.x + (halfW - lsz.x) * 0.5f, raTL.y + (36.0f - lsz.y) * 0.5f },
+                             IM_COL32(255,255,255,255), "Admin");
+            }
+            curY += 36.0f + 14.0f;
+
+            // Admin-only: Company | City, Send Code, Verification ID
+            if (s_signupRole == 1) {
+                dl->AddText({ fieldX,                 curY }, C_MUTED, "Company");
+                dl->AddText({ fieldX + halfW + 12.0f, curY }, C_MUTED, "City");
+                curY += ImGui::CalcTextSize("Company").y + 6.0f;
+                ImGui::SetCursorScreenPos({ fieldX, curY });
+                ImGui::SetNextItemWidth(halfW);
+                ImGui::InputTextWithHint("##company", "Company name", s_companyBuf, sizeof(s_companyBuf));
+                ImGui::SetCursorScreenPos({ fieldX + halfW + 12.0f, curY });
+                ImGui::SetNextItemWidth(halfW);
+                ImGui::InputTextWithHint("##city", "City", s_cityBuf, sizeof(s_cityBuf));
+                curY += 40.0f + 12.0f;
+
+                // Send Verification Code button
+                ImVec2 scTL = { fieldX, curY }, scBR = { fieldX + fieldW, curY + 36.0f };
+                ImGui::SetCursorScreenPos(scTL);
+                ImGui::InvisibleButton("sendCodeBtn", { fieldW, 36.0f });
+                bool scHov = ImGui::IsItemHovered();
+                if (ImGui::IsItemClicked() && userSvc && !s_authPending) {
+                    s_resultCode  = 0;
+                    s_validMsg[0] = 0;
+                    if (!s_emailBuf[0]) {
+                        strcpy_s(s_validMsg, "Enter your email before requesting a code.");
+                        s_resultCode = -3;
+                    } else if (!strchr(s_emailBuf, '@') || !strchr(s_emailBuf, '.')) {
+                        strcpy_s(s_validMsg, "Enter a valid email address (e.g. name@company.com).");
+                        s_resultCode = -3;
+                    } else {
+                        s_codeSent    = false;
+                        s_authPending = true;
+                        s_authAction  = 1;
+                        std::string em = s_emailBuf;
+                        s_authFuture = std::async(std::launch::async, [=]() -> bool {
+                            return userSvc->SendVerificationCode(em);
+                        });
+                    }
+                }
+                ImU32 scBg = (s_authPending && s_authAction == 1)
+                           ? IM_COL32(55,55,65,255)
+                           : scHov ? IM_COL32(50,50,58,255) : IM_COL32(38,38,44,255);
+                dl->AddRectFilled(scTL, scBR, scBg, 8.0f);
+                dl->AddRect(scTL, scBR, IM_COL32(75,75,85,255), 8.0f, 0, 1.0f);
+                {
+                    const char* scLbl = (s_authPending && s_authAction==1) ? "Sending..." : "Send Verification Code";
+                    ImVec2 lsz = ImGui::CalcTextSize(scLbl);
+                    dl->AddText({ scTL.x + (fieldW - lsz.x) * 0.5f, scTL.y + (36.0f - lsz.y) * 0.5f },
+                                IM_COL32(200,200,210,255), scLbl);
+                }
+                curY += 36.0f + 8.0f;
+
+                // Code sent confirmation
+                if (s_codeSent) {
+                    char sentTxt[300];
+                    snprintf(sentTxt, sizeof(sentTxt), "Code sent to %s (valid 15 min)", s_emailBuf);
+                    ImVec2 stSz = ImGui::CalcTextSize(sentTxt);
+                    dl->AddText({ fieldX + (fieldW - stSz.x) * 0.5f, curY },
+                                IM_COL32(100, 220, 130, 255), sentTxt);
+                    curY += stSz.y + 8.0f;
+                }
+
+                // Verification ID field
+                dl->AddText({ fieldX, curY }, C_MUTED, "Verification ID");
+                curY += ImGui::CalcTextSize("Verification ID").y + 6.0f;
+                ImGui::SetCursorScreenPos({ fieldX, curY });
+                ImGui::SetNextItemWidth(fieldW);
+                ImGui::InputTextWithHint("##verify", "Enter the code from your email",
+                                         s_verifyBuf, sizeof(s_verifyBuf));
+                curY += 40.0f + 14.0f;
+            }
+        }
 
         ImGui::PopStyleVar(2);
         ImGui::PopStyleColor(6);
         ImGui::PopFont();
 
         // ── Submit button ─────────────────────────────────────────────────────
-        // Poll background auth task
+        // Poll background task (send-code OR register/login)
         if (s_authPending && s_authFuture.valid() &&
             s_authFuture.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready) {
-            s_resultCode  = s_authFuture.get() ? 1 : -1;
+            bool ok = s_authFuture.get();
+            if (s_authAction == 1) {        // send-code result
+                s_codeSent = ok;
+                if (!ok) {
+                    const auto& e = userSvc ? userSvc->GetLastError() : std::string{};
+                    strcpy_s(s_validMsg, e.empty() ? "Failed to send code. Check SMTP config." : e.c_str());
+                    s_resultCode = -2;
+                } else {
+                    s_resultCode = 0;
+                }
+            } else {                        // register / login result
+                s_resultCode = ok ? 1 : -1;
+                if (!ok && userSvc) {
+                    const auto& e = userSvc->GetLastError();
+                    strcpy_s(s_validMsg, e.empty()
+                        ? (s_loginTab == 0 ? "Incorrect username or password."
+                                           : "Registration failed. Username may already be taken.")
+                        : e.c_str());
+                }
+            }
             s_authPending = false;
+            s_authAction  = 0;
         }
 
+        curY += 6.0f;
         ImVec2 subTL = { fieldX, curY }, subBR = { fieldX + fieldW, curY + 44.0f };
         ImGui::SetCursorScreenPos(subTL);
         ImGui::InvisibleButton("submitBtn", { fieldW, 44.0f });
         bool subHov = ImGui::IsItemHovered();
         if (ImGui::IsItemClicked() && userSvc && !s_authPending) {
             s_resultCode  = 0;
-            s_authPending = true;
-            std::string nm  = s_nameBuf, sn = s_surnameBuf;
-            std::string un  = s_unameBuf, pw = s_passBuf;
-            int         tab = s_loginTab;
-            s_authFuture = std::async(std::launch::async, [=]() -> bool {
-                return (tab == 0) ? userSvc->Login(un, pw)
-                                  : userSvc->RegisterUser(nm, sn, un, pw);
-            });
+            s_validMsg[0] = 0;
+
+            // Per-field validation — sets s_resultCode = -3 and s_validMsg on first error found
+            const char* err = nullptr;
+            if (s_loginTab == 0) {  // Log In
+                if      (!s_unameBuf[0]) err = "Username is required.";
+                else if (!s_passBuf[0])  err = "Password is required.";
+            } else {                // Sign Up
+                if      (!s_nameBuf[0])                              err = "Name is required.";
+                else if (!s_surnameBuf[0])                           err = "Surname is required.";
+                else if (!s_unameBuf[0])                             err = "Username is required.";
+                else if (strlen(s_passBuf) < 6)                      err = "Password must be at least 6 characters.";
+                else if (!s_emailBuf[0])                             err = "Email is required.";
+                else if (!strchr(s_emailBuf,'@')||!strchr(s_emailBuf,'.')) err = "Enter a valid email address (e.g. name@company.com).";
+                else if (s_signupRole == 1 && !s_companyBuf[0])     err = "Company name is required for admin accounts.";
+                else if (s_signupRole == 1 && !s_cityBuf[0])        err = "City is required for admin accounts.";
+                else if (s_signupRole == 1 && !s_codeSent)          err = "Request and receive a verification code first.";
+                else if (s_signupRole == 1 && !s_verifyBuf[0])      err = "Enter the verification code sent to your email.";
+            }
+
+            if (err) {
+                strcpy_s(s_validMsg, err);
+                s_resultCode = -3;
+            } else {
+                s_authPending = true;
+                s_authAction  = 2;
+                std::string nm = s_nameBuf, sn = s_surnameBuf;
+                std::string un = s_unameBuf, pw = s_passBuf;
+                std::string em = s_emailBuf, co = s_companyBuf, ci = s_cityBuf, vc = s_verifyBuf;
+                int tab  = s_loginTab;
+                int role = s_signupRole;
+                s_authFuture = std::async(std::launch::async, [=]() -> bool {
+                    if (tab == 0)  return userSvc->Login(un, pw);
+                    if (role == 0) return userSvc->RegisterCustomer(nm, sn, un, pw, em);
+                    return userSvc->RegisterAdmin(nm, sn, un, pw, em, co, ci, vc);
+                });
+            }
         }
-        ImU32 subCol = s_authPending ? IM_COL32(120, 35, 75, 255)
-                     : subHov        ? IM_COL32(245, 70, 120, 255)
-                                     : C_TITLE;
+        ImU32 subCol = (s_authPending && s_authAction == 2) ? IM_COL32(120, 35, 75, 255)
+                     : subHov                               ? IM_COL32(245, 70, 120, 255)
+                                                            : C_TITLE;
         dl->AddRectFilled(subTL, subBR, subCol, 8.0f);
         ImGui::PushFont(F[0]);
-        const char* subLabel = s_authPending ? "..." : (s_loginTab == 0 ? "Log In" : "Sign Up");
+        const char* subLabel = (s_authPending && s_authAction == 2) ? "..."
+                             : (s_loginTab == 0) ? "Log In" : "Sign Up";
         ImVec2 subLblSz = ImGui::CalcTextSize(subLabel);
-        dl->AddText({ subTL.x + (fieldW  - subLblSz.x) * 0.5f,
-                      subTL.y + (44.0f   - subLblSz.y) * 0.5f },
+        dl->AddText({ subTL.x + (fieldW - subLblSz.x) * 0.5f,
+                      subTL.y + (44.0f  - subLblSz.y) * 0.5f },
                     IM_COL32(255, 255, 255, 255), subLabel);
         ImGui::PopFont();
         curY += 44.0f + 8.0f;
@@ -718,10 +897,21 @@ void RenderMainMenu(
         // Result feedback
         if (s_resultCode != 0) {
             ImGui::PushFont(F[1]);
-            const char* msg = (s_resultCode > 0)
-                ? (s_loginTab == 0 ? "Logged in successfully!" : "Account created successfully!")
-                : (s_loginTab == 0 ? "Invalid username or password." : "Registration failed. Username may already exist.");
-            ImU32 msgCol = (s_resultCode > 0) ? IM_COL32(100, 220, 130, 255) : IM_COL32(220, 80, 80, 255);
+            const char* msg;
+            ImU32 msgCol;
+            if (s_resultCode == 1) {
+                msg    = (s_loginTab == 0) ? "Logged in successfully!" : "Account created successfully!";
+                msgCol = IM_COL32(100, 220, 130, 255);   // green
+            } else if (s_resultCode == -3) {
+                msg    = s_validMsg;                     // validation — amber
+                msgCol = IM_COL32(255, 190, 60, 255);
+            } else {
+                msg    = s_validMsg[0] ? s_validMsg      // server / SMTP error — red
+                       : (s_resultCode == -2) ? "Failed to send code. Check SMTP config."
+                       : (s_loginTab == 0)    ? "Incorrect username or password."
+                       :                        "Registration failed.";
+                msgCol = IM_COL32(220, 80, 80, 255);
+            }
             ImVec2 msgSz = ImGui::CalcTextSize(msg);
             dl->AddText({ fieldX + (fieldW - msgSz.x) * 0.5f, curY }, msgCol, msg);
             ImGui::PopFont();
@@ -730,47 +920,46 @@ void RenderMainMenu(
             curY += 8.0f;
         }
 
-        // ── OR divider ────────────────────────────────────────────────────────
-        ImGui::PushFont(F[2]); // Inter 11px
-        ImVec2 orSz  = ImGui::CalcTextSize("or");
-        float  orX   = mx + (M_W - orSz.x) * 0.5f;
-        float  lineY = curY + 6.0f;
-        dl->AddLine({ fieldX, lineY }, { orX - 8.0f, lineY },
-                    IM_COL32(65, 65, 72, 255), 1.0f);
-        dl->AddText({ orX, curY + (12.0f - orSz.y) * 0.5f }, C_MUTED, "or");
-        dl->AddLine({ orX + orSz.x + 8.0f, lineY }, { fieldX + fieldW, lineY },
-                    IM_COL32(65, 65, 72, 255), 1.0f);
-        ImGui::PopFont();
-        curY += 24.0f;
-
-        // ── Social buttons ────────────────────────────────────────────────────
-        constexpr float SOC_H = 44.0f, SOC_GAP = 8.0f;
-        auto drawSocBtn = [&](const char* id, const char* label,
-                               ID3D11ShaderResourceView* iconTex,
-                               void(*iconFallback)(ImDrawList*, ImVec2, float, ImU32)) {
-            ImVec2 sTL = { fieldX, curY }, sBR = { fieldX + fieldW, curY + SOC_H };
-            ImGui::SetCursorScreenPos(sTL);
-            ImGui::InvisibleButton(id, { fieldW, SOC_H });
-            bool hov = ImGui::IsItemHovered();
-            dl->AddRectFilled(sTL, sBR,
-                hov ? IM_COL32(50,50,58,255) : IM_COL32(38,38,44,255), 8.0f);
-            dl->AddRect(sTL, sBR, IM_COL32(75,75,85,255), 8.0f, 0, 1.0f);
-            float icCX = sTL.x + 52.0f, icCY = sTL.y + SOC_H * 0.5f;
-            if (iconTex)
-                dl->AddImage((ImTextureID)iconTex,
-                    { icCX - 10.0f, icCY - 10.0f }, { icCX + 10.0f, icCY + 10.0f });
-            else
-                iconFallback(dl, { icCX, icCY }, 9.0f, IM_COL32(255,255,255,220));
-            ImGui::PushFont(F[1]);
-            ImVec2 lblSz = ImGui::CalcTextSize(label);
-            dl->AddText({ sTL.x + 70.0f, sTL.y + (SOC_H - lblSz.y) * 0.5f },
-                        IM_COL32(255,255,255,220), label);
+        // ── OR divider + social buttons (Log In or Customer Sign Up only) ─────
+        if (s_loginTab == 0 || s_signupRole == 0) {
+            ImGui::PushFont(F[2]);
+            ImVec2 orSz  = ImGui::CalcTextSize("or");
+            float  orX   = mx + (M_W - orSz.x) * 0.5f;
+            float  lineY = curY + 6.0f;
+            dl->AddLine({ fieldX, lineY }, { orX - 8.0f, lineY }, IM_COL32(65, 65, 72, 255), 1.0f);
+            dl->AddText({ orX, curY + (12.0f - orSz.y) * 0.5f }, C_MUTED, "or");
+            dl->AddLine({ orX + orSz.x + 8.0f, lineY }, { fieldX + fieldW, lineY }, IM_COL32(65, 65, 72, 255), 1.0f);
             ImGui::PopFont();
-            curY += SOC_H + SOC_GAP;
-        };
-        drawSocBtn("googleBtn", "Continue with Google", googleIconTex, DrawGoogleIcon);
-        drawSocBtn("appleBtn",  "Continue with Apple",  appleIconTex,  DrawAppleIcon);
-        drawSocBtn("teamsBtn",  "Continue with Teams",  msIconTex,     DrawWindowsIcon);
+            curY += 24.0f;
+
+            constexpr float SOC_H = 44.0f, SOC_GAP = 8.0f;
+            auto drawSocBtn = [&](const char* id, const char* label,
+                                   ID3D11ShaderResourceView* iconTex,
+                                   void(*iconFallback)(ImDrawList*, ImVec2, float, ImU32)) {
+                ImVec2 sTL = { fieldX, curY }, sBR = { fieldX + fieldW, curY + SOC_H };
+                ImGui::SetCursorScreenPos(sTL);
+                ImGui::InvisibleButton(id, { fieldW, SOC_H });
+                bool hov = ImGui::IsItemHovered();
+                dl->AddRectFilled(sTL, sBR,
+                    hov ? IM_COL32(50,50,58,255) : IM_COL32(38,38,44,255), 8.0f);
+                dl->AddRect(sTL, sBR, IM_COL32(75,75,85,255), 8.0f, 0, 1.0f);
+                float icCX = sTL.x + 52.0f, icCY = sTL.y + SOC_H * 0.5f;
+                if (iconTex)
+                    dl->AddImage((ImTextureID)iconTex,
+                        { icCX - 10.0f, icCY - 10.0f }, { icCX + 10.0f, icCY + 10.0f });
+                else
+                    iconFallback(dl, { icCX, icCY }, 9.0f, IM_COL32(255,255,255,220));
+                ImGui::PushFont(F[1]);
+                ImVec2 lblSz = ImGui::CalcTextSize(label);
+                dl->AddText({ sTL.x + 70.0f, sTL.y + (SOC_H - lblSz.y) * 0.5f },
+                            IM_COL32(255,255,255,220), label);
+                ImGui::PopFont();
+                curY += SOC_H + SOC_GAP;
+            };
+            drawSocBtn("googleBtn", "Continue with Google", googleIconTex, DrawGoogleIcon);
+            drawSocBtn("appleBtn",  "Continue with Apple",  appleIconTex,  DrawAppleIcon);
+            drawSocBtn("teamsBtn",  "Continue with Teams",  msIconTex,     DrawWindowsIcon);
+        }
     }
 
     outShowModal = s_showLoginModal;

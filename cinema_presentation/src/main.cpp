@@ -205,7 +205,18 @@ int main(int, char**) {
     LoadTextureFromFile(g_pd3dDevice, "assets/icons/microsoftIcon.png", &msIconTex,     &msIconW,     &msIconH);
 
     auto userRepo = std::make_shared<SqlUserRepository>();
-    UserService userSvc(userRepo);
+
+    // ── SMTP configuration ────────────────────────────────────────────────────
+    // Default: MailHog on localhost:1025 (no auth, no TLS).
+    // For a real mail server change host/port/from/username/password below.
+    SmtpConfig smtpCfg;
+    smtpCfg.host     = "localhost";
+    smtpCfg.port     = 1025;                   // 587 for real SMTP + STARTTLS
+    smtpCfg.from     = "noreply@cinema.local";
+    smtpCfg.username = "";                     // set for authenticated SMTP
+    smtpCfg.password = "";
+
+    UserService userSvc(userRepo, smtpCfg);
 
     int selectedMovieIndex = -1;
     int currentHeroIndex   = 0;
