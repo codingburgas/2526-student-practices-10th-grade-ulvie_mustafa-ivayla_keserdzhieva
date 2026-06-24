@@ -253,6 +253,7 @@ void RenderMainMenu(
     static char              s_validMsg[256] = {};
     static bool              s_authPending = false;
     static std::future<bool> s_authFuture;
+    static bool              s_loggedIn    = false;
 
     // Per-poster hover animation values (persistent across frames)
     static float s_hoverT[9] = {};
@@ -326,24 +327,34 @@ void RenderMainMenu(
     }
     ImGui::PopFont();
 
-    // Right side: Sign In button
+    // Right side: Profile icon (logged in) or Sign In button
     constexpr float SIGNIN_W = 90.0f, SIGNIN_H = 36.0f;
     float snRight = orig.x + winW - 28.0f;
     float snLeft  = snRight - SIGNIN_W;
     float snTop   = orig.y + (NAV_H - SIGNIN_H) * 0.5f;
-    ImVec2 snTL = { snLeft, snTop };
-    ImVec2 snBR = { snRight, snTop + SIGNIN_H };
 
-    ImGui::SetCursorScreenPos(snTL);
-    ImGui::InvisibleButton("signInBtn", { SIGNIN_W, SIGNIN_H });
-    bool signInHov = ImGui::IsItemHovered();
-    if (ImGui::IsItemClicked()) { s_showLoginModal = true; s_modalOpenFrame = ImGui::GetFrameCount(); }
-    dl->AddRectFilled(snTL, snBR, signInHov ? C_TITLE : C_LOGO, SIGNIN_H * 0.5f);
-    ImGui::PushFont(F[1]); // Inter 15px
-    ImVec2 snTxtSz = ImGui::CalcTextSize("Sign In");
-    dl->AddText({ snLeft + (SIGNIN_W - snTxtSz.x) * 0.5f, snTop + (SIGNIN_H - snTxtSz.y) * 0.5f },
-                IM_COL32(255, 255, 255, 255), "Sign In");
-    ImGui::PopFont();
+    if (s_loggedIn) {
+        constexpr float PROF_R = 18.0f;
+        ImVec2 profC = { snRight - PROF_R, orig.y + NAV_H * 0.5f };
+        ImGui::SetCursorScreenPos({ profC.x - PROF_R, profC.y - PROF_R });
+        ImGui::InvisibleButton("profileBtn", { PROF_R * 2, PROF_R * 2 });
+        bool profHov = ImGui::IsItemHovered();
+        DrawProfile(dl, profC, PROF_R,
+            profHov ? IM_COL32(233, 131, 160, 255) : IM_COL32(200, 200, 210, 255));
+    } else {
+        ImVec2 snTL = { snLeft, snTop };
+        ImVec2 snBR = { snRight, snTop + SIGNIN_H };
+        ImGui::SetCursorScreenPos(snTL);
+        ImGui::InvisibleButton("signInBtn", { SIGNIN_W, SIGNIN_H });
+        bool signInHov = ImGui::IsItemHovered();
+        if (ImGui::IsItemClicked()) { s_showLoginModal = true; s_modalOpenFrame = ImGui::GetFrameCount(); }
+        dl->AddRectFilled(snTL, snBR, signInHov ? C_TITLE : C_LOGO, SIGNIN_H * 0.5f);
+        ImGui::PushFont(F[1]); // Inter 15px
+        ImVec2 snTxtSz = ImGui::CalcTextSize("Sign In");
+        dl->AddText({ snLeft + (SIGNIN_W - snTxtSz.x) * 0.5f, snTop + (SIGNIN_H - snTxtSz.y) * 0.5f },
+                    IM_COL32(255, 255, 255, 255), "Sign In");
+        ImGui::PopFont();
+    }
 
     // Search bar
     constexpr float SB_W = 300.0f, SB_H = 38.0f;
@@ -823,6 +834,10 @@ void RenderMainMenu(
                 }
             } else {                        // register / login result
                 s_resultCode = ok ? 1 : -1;
+                if (ok && s_loginTab == 0) {
+                    s_loggedIn       = true;
+                    s_showLoginModal = false;
+                }
                 if (!ok && userSvc) {
                     const auto& e = userSvc->GetLastError();
                     strcpy_s(s_validMsg, e.empty()
