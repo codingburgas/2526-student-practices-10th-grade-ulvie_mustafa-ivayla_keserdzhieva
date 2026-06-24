@@ -165,6 +165,44 @@ static std::string TodayStr() {
     return buf;
 }
 
+// ── Auth modal icon helpers ───────────────────────────────────────────────────
+
+static void DrawGoogleIcon(ImDrawList* dl, ImVec2 c, float r, ImU32 col) {
+    const int N = 18;
+    ImVec2 pts[18];
+    for (int i = 0; i < N; i++) {
+        float a = (80.0f + i * 295.0f / (N - 1)) * 3.14159f / 180.0f;
+        pts[i] = { c.x + cosf(a) * r, c.y + sinf(a) * r };
+    }
+    dl->AddPolyline(pts, N, col, ImDrawFlags_None, 1.5f);
+    dl->AddLine({ c.x, c.y }, { c.x + r, c.y }, col, 1.5f);
+    dl->AddLine({ c.x, c.y - r * 0.45f }, { c.x, c.y + r * 0.45f }, col, 1.5f);
+}
+
+static void DrawAppleIcon(ImDrawList* dl, ImVec2 c, float r, ImU32 col) {
+    ImVec2 pts[8] = {
+        { c.x - r * 0.62f, c.y - r * 0.22f },
+        { c.x - r * 0.78f, c.y + r * 0.28f },
+        { c.x - r * 0.52f, c.y + r * 0.88f },
+        { c.x,             c.y + r * 0.98f  },
+        { c.x + r * 0.52f, c.y + r * 0.88f },
+        { c.x + r * 0.78f, c.y + r * 0.28f },
+        { c.x + r * 0.62f, c.y - r * 0.22f },
+        { c.x,             c.y - r * 0.12f  },
+    };
+    dl->AddConvexPolyFilled(pts, 8, col);
+    dl->AddLine({ c.x + r * 0.18f, c.y - r * 0.12f },
+                { c.x + r * 0.42f, c.y - r * 0.72f }, col, 1.5f);
+}
+
+static void DrawWindowsIcon(ImDrawList* dl, ImVec2 c, float r, ImU32 col) {
+    float s = r * 0.38f, g = r * 0.10f;
+    dl->AddRectFilled({ c.x - s - g, c.y - s - g }, { c.x - g,     c.y - g     }, col);
+    dl->AddRectFilled({ c.x + g,     c.y - s - g }, { c.x + s + g, c.y - g     }, col);
+    dl->AddRectFilled({ c.x - s - g, c.y + g     }, { c.x - g,     c.y + s + g }, col);
+    dl->AddRectFilled({ c.x + g,     c.y + g     }, { c.x + s + g, c.y + s + g }, col);
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 // MAIN RENDER
 // ═════════════════════════════════════════════════════════════════════════════
@@ -185,7 +223,19 @@ void RenderMainMenu(
     ID3D11ShaderResourceView*  playIconTex,     int /*playIconW*/,  int /*playIconH*/,
     ID3D11ShaderResourceView*  favoriteIconTex, int /*favIconW*/,   int /*favIconH*/,
     ID3D11ShaderResourceView*  leftArrowTex,    int /*leftArrW*/,   int /*leftArrH*/,
-    ID3D11ShaderResourceView*  rightArrowTex,   int /*rightArrW*/,  int /*rightArrH*/) {
+    ID3D11ShaderResourceView*  rightArrowTex,   int /*rightArrW*/,  int /*rightArrH*/,
+    bool& outShowModal,
+    ID3D11ShaderResourceView* blurBgSrv,
+    ID3D11ShaderResourceView* googleIconTex,
+    ID3D11ShaderResourceView* appleIconTex,
+    ID3D11ShaderResourceView* msIconTex) {
+
+    // Login modal state
+    static bool s_showLoginModal  = false;
+    static int  s_modalOpenFrame  = -9999;
+    static int  s_loginTab        = 0;   // 0 = Log In, 1 = Sign Up
+    static char s_unameBuf[256]   = {};
+    static char s_passBuf[256]    = {};
 
     // Per-poster hover animation values (persistent across frames)
     static float s_hoverT[9] = {};
@@ -215,6 +265,7 @@ void RenderMainMenu(
                     ImGui::GetWindowPos().y - ImGui::GetScrollY() };
     ImDrawList* dl = ImGui::GetWindowDrawList();
 
+    if (!s_showLoginModal) {
     // ─────────────────────────────────────────────────────────────────────────
     // NAVBAR
     // ─────────────────────────────────────────────────────────────────────────
@@ -258,25 +309,28 @@ void RenderMainMenu(
     }
     ImGui::PopFont();
 
-    // Right side: profile
-    float rightEdge = orig.x + winW - 28.0f;
-    float profileR  = 16.0f;
-    ImVec2 profileC = { rightEdge - profileR, orig.y + NAV_H * 0.5f };
-    DrawProfile(dl, profileC, profileR, IM_COL32(155, 155, 165, 255));
+    // Right side: Sign In button
+    constexpr float SIGNIN_W = 90.0f, SIGNIN_H = 36.0f;
+    float snRight = orig.x + winW - 28.0f;
+    float snLeft  = snRight - SIGNIN_W;
+    float snTop   = orig.y + (NAV_H - SIGNIN_H) * 0.5f;
+    ImVec2 snTL = { snLeft, snTop };
+    ImVec2 snBR = { snRight, snTop + SIGNIN_H };
 
-    // City + pin
-    ImGui::PushFont(F[0]);
-    ImVec2 citySz = ImGui::CalcTextSize("City");
-    float pinR  = 7.0f;
-    float cityX = profileC.x - profileR - 14.0f - citySz.x;
-    float cityY = orig.y + (NAV_H - citySz.y) * 0.5f;
-    dl->AddText({ cityX, cityY }, C_MUTED, "City");
-    DrawPin(dl, { cityX - pinR * 2.2f, orig.y + NAV_H * 0.5f }, pinR, C_MUTED);
+    ImGui::SetCursorScreenPos(snTL);
+    ImGui::InvisibleButton("signInBtn", { SIGNIN_W, SIGNIN_H });
+    bool signInHov = ImGui::IsItemHovered();
+    if (ImGui::IsItemClicked()) { s_showLoginModal = true; s_modalOpenFrame = ImGui::GetFrameCount(); }
+    dl->AddRectFilled(snTL, snBR, signInHov ? C_TITLE : C_LOGO, SIGNIN_H * 0.5f);
+    ImGui::PushFont(F[1]); // Inter 15px
+    ImVec2 snTxtSz = ImGui::CalcTextSize("Sign In");
+    dl->AddText({ snLeft + (SIGNIN_W - snTxtSz.x) * 0.5f, snTop + (SIGNIN_H - snTxtSz.y) * 0.5f },
+                IM_COL32(255, 255, 255, 255), "Sign In");
     ImGui::PopFont();
 
     // Search bar
     constexpr float SB_W = 300.0f, SB_H = 38.0f;
-    float sbX = cityX - 26.0f - SB_W;
+    float sbX = snLeft - 20.0f - SB_W;
     float sbY = orig.y + (NAV_H - SB_H) * 0.5f;
     dl->AddRectFilled({ sbX, sbY }, { sbX + SB_W, sbY + SB_H }, C_SRCHBG, 19.0f);
     dl->AddRect(      { sbX, sbY }, { sbX + SB_W, sbY + SB_H }, IM_COL32(55,55,62,255), 19.0f, 0, 1.0f);
@@ -284,8 +338,8 @@ void RenderMainMenu(
     dl->AddText({ sbX + 16.0f, sbY + (SB_H - 15.0f) * 0.5f },
                 IM_COL32(144, 136, 144, 115), "Search a movie");
     ImGui::PopFont();
-    float siR = 8.0f;
-    DrawSearch(dl, { sbX + SB_W - siR * 2.8f, sbY + SB_H * 0.5f }, siR, IM_COL32(144,136,144,145));
+    float srchR = 8.0f;
+    DrawSearch(dl, { sbX + SB_W - srchR * 2.8f, sbY + SB_H * 0.5f }, srchR, IM_COL32(144,136,144,145));
 
     // ─────────────────────────────────────────────────────────────────────────
     // SECTION HEADER
@@ -485,7 +539,176 @@ void RenderMainMenu(
     float bottom = gridY + rows * (P_H + P_GAP) + 80.0f;
     ImGui::SetCursorScreenPos({ 0, bottom });
     ImGui::Dummy({ 1, 1 });
+    } // end !s_showLoginModal
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // LOGIN MODAL
+    // ─────────────────────────────────────────────────────────────────────────
+    if (s_showLoginModal) {
+        float winH = io.DisplaySize.y;
+
+        // Blurred background: captured frame drawn with a 5×5 box-blur spread
+        if (blurBgSrv) {
+            dl->AddImage((ImTextureID)blurBgSrv,
+                { orig.x, orig.y }, { orig.x + winW, orig.y + winH },
+                { 0.f, 0.f }, { 1.f, 1.f }, IM_COL32(255, 255, 255, 210));
+            constexpr float bR = 3.5f;
+            for (int bx = -2; bx <= 2; bx++) {
+                for (int by = -2; by <= 2; by++) {
+                    if (bx == 0 && by == 0) continue;
+                    float u0 = bx * bR / winW, v0 = by * bR / winH;
+                    dl->AddImage((ImTextureID)blurBgSrv,
+                        { orig.x, orig.y }, { orig.x + winW, orig.y + winH },
+                        { u0, v0 }, { 1.f + u0, 1.f + v0 },
+                        IM_COL32(255, 255, 255, 16));
+                }
+            }
+        }
+        // Dark tint over the blurred background
+        dl->AddRectFilled({ orig.x, orig.y }, { orig.x + winW, orig.y + winH },
+                          IM_COL32(0, 0, 0, 155));
+
+        // Modal dimensions
+        constexpr float M_W = 480.0f, M_H = 504.0f;
+        float mx = orig.x + (winW - M_W) * 0.5f;
+        float my = orig.y + (winH - M_H) * 0.5f;
+        ImVec2 mTL = { mx, my }, mBR = { mx + M_W, my + M_H };
+
+        dl->AddRectFilled(mTL, mBR, IM_COL32(22, 22, 26, 255), 14.0f);
+        dl->AddRect(mTL, mBR, IM_COL32(55, 55, 62, 255), 14.0f, 0, 1.0f);
+
+        // Close when clicking outside (guard: skip the frame the modal was opened)
+        if (ImGui::IsMouseClicked(0) && ImGui::GetFrameCount() > s_modalOpenFrame) {
+            ImVec2 mp = ImGui::GetMousePos();
+            if (mp.x < mx || mp.x > mx + M_W || mp.y < my || mp.y > my + M_H)
+                s_showLoginModal = false;
+        }
+
+        // ── Tabs ─────────────────────────────────────────────────────────────
+        float tabY = my + 32.0f;
+        ImGui::PushFont(F[0]); // Inter 18px
+        ImVec2 liSz = ImGui::CalcTextSize("Log In");
+        ImVec2 suSz = ImGui::CalcTextSize("Sign Up");
+        float  liX  = mx + M_W * 0.36f - liSz.x * 0.5f;
+        float  suX  = mx + M_W * 0.64f - suSz.x * 0.5f;
+
+        ImGui::SetCursorScreenPos({ liX - 8.0f, tabY - 4.0f });
+        ImGui::InvisibleButton("tabLI", { liSz.x + 16.0f, liSz.y + 8.0f });
+        if (ImGui::IsItemClicked()) s_loginTab = 0;
+        dl->AddText({ liX, tabY },
+            (s_loginTab == 0 || ImGui::IsItemHovered()) ? IM_COL32(255,255,255,255) : C_MUTED,
+            "Log In");
+        if (s_loginTab == 0)
+            dl->AddLine({ liX, tabY + liSz.y + 5.0f },
+                        { liX + liSz.x, tabY + liSz.y + 5.0f }, C_TITLE, 2.0f);
+
+        ImGui::SetCursorScreenPos({ suX - 8.0f, tabY - 4.0f });
+        ImGui::InvisibleButton("tabSU", { suSz.x + 16.0f, suSz.y + 8.0f });
+        if (ImGui::IsItemClicked()) s_loginTab = 1;
+        dl->AddText({ suX, tabY },
+            (s_loginTab == 1 || ImGui::IsItemHovered()) ? IM_COL32(255,255,255,255) : C_MUTED,
+            "Sign Up");
+        if (s_loginTab == 1)
+            dl->AddLine({ suX, tabY + suSz.y + 5.0f },
+                        { suX + suSz.x, tabY + suSz.y + 5.0f }, C_TITLE, 2.0f);
+        ImGui::PopFont();
+
+        // ── Input fields ──────────────────────────────────────────────────────
+        float fieldX = mx + 28.0f;
+        float fieldW = M_W - 56.0f;
+        float curY   = tabY + liSz.y + 28.0f;
+
+        ImGui::PushFont(F[1]); // Inter 15px
+        ImGui::PushStyleColor(ImGuiCol_FrameBg,        ImVec4(38/255.f, 38/255.f, 44/255.f, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, ImVec4(48/255.f, 48/255.f, 54/255.f, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive,  ImVec4(48/255.f, 48/255.f, 54/255.f, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_Border,         ImVec4(75/255.f, 75/255.f, 85/255.f, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_Text,           ImVec4(0.90f, 0.90f, 0.92f, 1.f));
+        ImGui::PushStyleColor(ImGuiCol_TextDisabled,   ImVec4(0.44f, 0.44f, 0.50f, 1.f));
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 8.0f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FramePadding,  ImVec2(12.0f, 10.0f));
+
+        dl->AddText({ fieldX, curY }, C_MUTED, "Username");
+        curY += ImGui::CalcTextSize("Username").y + 6.0f;
+        ImGui::SetCursorScreenPos({ fieldX, curY });
+        ImGui::SetNextItemWidth(fieldW);
+        ImGui::InputTextWithHint("##uname", "Enter your Email/Username",
+                                 s_unameBuf, sizeof(s_unameBuf));
+        curY += 40.0f + 14.0f;
+
+        dl->AddText({ fieldX, curY }, C_MUTED, "Password");
+        curY += ImGui::CalcTextSize("Password").y + 6.0f;
+        ImGui::SetCursorScreenPos({ fieldX, curY });
+        ImGui::SetNextItemWidth(fieldW);
+        ImGui::InputTextWithHint("##pass", "Enter your password",
+                                 s_passBuf, sizeof(s_passBuf),
+                                 ImGuiInputTextFlags_Password);
+        curY += 40.0f + 20.0f;
+
+        ImGui::PopStyleVar(2);
+        ImGui::PopStyleColor(6);
+        ImGui::PopFont();
+
+        // ── Submit button ─────────────────────────────────────────────────────
+        ImVec2 subTL = { fieldX, curY }, subBR = { fieldX + fieldW, curY + 44.0f };
+        ImGui::SetCursorScreenPos(subTL);
+        ImGui::InvisibleButton("submitBtn", { fieldW, 44.0f });
+        bool subHov = ImGui::IsItemHovered();
+        dl->AddRectFilled(subTL, subBR,
+            subHov ? IM_COL32(245, 70, 120, 255) : C_TITLE, 8.0f);
+        ImGui::PushFont(F[0]);
+        const char* subLabel = (s_loginTab == 0) ? "Log In" : "Sign Up";
+        ImVec2 subLblSz = ImGui::CalcTextSize(subLabel);
+        dl->AddText({ subTL.x + (fieldW  - subLblSz.x) * 0.5f,
+                      subTL.y + (44.0f   - subLblSz.y) * 0.5f },
+                    IM_COL32(255, 255, 255, 255), subLabel);
+        ImGui::PopFont();
+        curY += 44.0f + 16.0f;
+
+        // ── OR divider ────────────────────────────────────────────────────────
+        ImGui::PushFont(F[2]); // Inter 11px
+        ImVec2 orSz  = ImGui::CalcTextSize("or");
+        float  orX   = mx + (M_W - orSz.x) * 0.5f;
+        float  lineY = curY + 6.0f;
+        dl->AddLine({ fieldX, lineY }, { orX - 8.0f, lineY },
+                    IM_COL32(65, 65, 72, 255), 1.0f);
+        dl->AddText({ orX, curY + (12.0f - orSz.y) * 0.5f }, C_MUTED, "or");
+        dl->AddLine({ orX + orSz.x + 8.0f, lineY }, { fieldX + fieldW, lineY },
+                    IM_COL32(65, 65, 72, 255), 1.0f);
+        ImGui::PopFont();
+        curY += 24.0f;
+
+        // ── Social buttons ────────────────────────────────────────────────────
+        constexpr float SOC_H = 44.0f, SOC_GAP = 8.0f;
+        auto drawSocBtn = [&](const char* id, const char* label,
+                               ID3D11ShaderResourceView* iconTex,
+                               void(*iconFallback)(ImDrawList*, ImVec2, float, ImU32)) {
+            ImVec2 sTL = { fieldX, curY }, sBR = { fieldX + fieldW, curY + SOC_H };
+            ImGui::SetCursorScreenPos(sTL);
+            ImGui::InvisibleButton(id, { fieldW, SOC_H });
+            bool hov = ImGui::IsItemHovered();
+            dl->AddRectFilled(sTL, sBR,
+                hov ? IM_COL32(50,50,58,255) : IM_COL32(38,38,44,255), 8.0f);
+            dl->AddRect(sTL, sBR, IM_COL32(75,75,85,255), 8.0f, 0, 1.0f);
+            float icCX = sTL.x + 52.0f, icCY = sTL.y + SOC_H * 0.5f;
+            if (iconTex)
+                dl->AddImage((ImTextureID)iconTex,
+                    { icCX - 10.0f, icCY - 10.0f }, { icCX + 10.0f, icCY + 10.0f });
+            else
+                iconFallback(dl, { icCX, icCY }, 9.0f, IM_COL32(255,255,255,220));
+            ImGui::PushFont(F[1]);
+            ImVec2 lblSz = ImGui::CalcTextSize(label);
+            dl->AddText({ sTL.x + 70.0f, sTL.y + (SOC_H - lblSz.y) * 0.5f },
+                        IM_COL32(255,255,255,220), label);
+            ImGui::PopFont();
+            curY += SOC_H + SOC_GAP;
+        };
+        drawSocBtn("googleBtn", "Continue with Google", googleIconTex, DrawGoogleIcon);
+        drawSocBtn("appleBtn",  "Continue with Apple",  appleIconTex,  DrawAppleIcon);
+        drawSocBtn("teamsBtn",  "Continue with Teams",  msIconTex,     DrawWindowsIcon);
+    }
+
+    outShowModal = s_showLoginModal;
     ImGui::End();
     ImGui::PopStyleColor();
     ImGui::PopStyleVar();

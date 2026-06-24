@@ -18,7 +18,12 @@ void RenderMainMenu(
     ID3D11ShaderResourceView*  playIconTex,     int playIconW,  int playIconH,
     ID3D11ShaderResourceView*  favoriteIconTex, int favIconW,   int favIconH,
     ID3D11ShaderResourceView*  leftArrowTex,    int leftArrW,   int leftArrH,
-    ID3D11ShaderResourceView*  rightArrowTex,   int rightArrW,  int rightArrH);
+    ID3D11ShaderResourceView*  rightArrowTex,   int rightArrW,  int rightArrH,
+    bool& outShowModal,
+    ID3D11ShaderResourceView* blurBgSrv,
+    ID3D11ShaderResourceView* googleIconTex,
+    ID3D11ShaderResourceView* appleIconTex,
+    ID3D11ShaderResourceView* msIconTex);
 
 void RenderMovieDetail(
     int movieIndex, bool& goBack,
@@ -28,6 +33,8 @@ static ID3D11Device*           g_pd3dDevice           = nullptr;
 static ID3D11DeviceContext*    g_pd3dDeviceContext    = nullptr;
 static IDXGISwapChain*         g_pSwapChain           = nullptr;
 static ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
+static ID3D11Texture2D*          g_blurCapTex         = nullptr;
+static ID3D11ShaderResourceView* g_blurCapSRV         = nullptr;
 
 bool LoadTextureFromFile(ID3D11Device* dev, const char* path,
                          ID3D11ShaderResourceView** srv, int* w, int* h) {
@@ -185,8 +192,16 @@ int main(int, char**) {
     LoadTextureFromFile(g_pd3dDevice, "assets/icons/leftArrowButton.png",  &leftArrTex,  &leftArrW,  &leftArrH);
     LoadTextureFromFile(g_pd3dDevice, "assets/icons/rightArrowButton.png", &rightArrTex, &rightArrW, &rightArrH);
 
+    ID3D11ShaderResourceView* googleIconTex = nullptr; int googleIconW = 0, googleIconH = 0;
+    ID3D11ShaderResourceView* appleIconTex  = nullptr; int appleIconW  = 0, appleIconH  = 0;
+    ID3D11ShaderResourceView* msIconTex     = nullptr; int msIconW     = 0, msIconH     = 0;
+    LoadTextureFromFile(g_pd3dDevice, "assets/icons/googleIcon.png",    &googleIconTex, &googleIconW, &googleIconH);
+    LoadTextureFromFile(g_pd3dDevice, "assets/icons/appleIcon.png",     &appleIconTex,  &appleIconW,  &appleIconH);
+    LoadTextureFromFile(g_pd3dDevice, "assets/icons/microsoftIcon.png", &msIconTex,     &msIconW,     &msIconH);
+
     int selectedMovieIndex = -1;
     int currentHeroIndex   = 0;
+    bool showModal         = false;
 
     bool running = true;
     while (running) {
@@ -213,7 +228,9 @@ int main(int, char**) {
                 playIconTex, playIconW, playIconH,
                 favIconTex,  favIconW,  favIconH,
                 leftArrTex,  leftArrW,  leftArrH,
-                rightArrTex, rightArrW, rightArrH);
+                rightArrTex, rightArrW, rightArrH,
+                showModal, g_blurCapSRV,
+                googleIconTex, appleIconTex, msIconTex);
         }
 
         ImGui::Render();
@@ -221,6 +238,16 @@ int main(int, char**) {
         g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView, nullptr);
         g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView, cc);
         ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+
+        // Capture backbuffer into blur texture while the modal is not open
+        if (!showModal && g_blurCapTex) {
+            ID3D11Texture2D* backBuf = nullptr;
+            if (SUCCEEDED(g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&backBuf)))) {
+                g_pd3dDeviceContext->CopyResource(g_blurCapTex, backBuf);
+                backBuf->Release();
+            }
+        }
+
         g_pSwapChain->Present(1, 0);
     }
 
@@ -267,11 +294,27 @@ void CreateRenderTarget() {
     ID3D11Texture2D* pBackBuffer;
     g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
     g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_mainRenderTargetView);
+
+    // Create matching texture for blur background capture
+    D3D11_TEXTURE2D_DESC bd = {};
+    pBackBuffer->GetDesc(&bd);
+    bd.BindFlags      = D3D11_BIND_SHADER_RESOURCE;
+    bd.Usage          = D3D11_USAGE_DEFAULT;
+    bd.CPUAccessFlags = 0;
+    if (SUCCEEDED(g_pd3dDevice->CreateTexture2D(&bd, nullptr, &g_blurCapTex))) {
+        D3D11_SHADER_RESOURCE_VIEW_DESC sd = {};
+        sd.Format              = bd.Format;
+        sd.ViewDimension       = D3D11_SRV_DIMENSION_TEXTURE2D;
+        sd.Texture2D.MipLevels = 1;
+        g_pd3dDevice->CreateShaderResourceView(g_blurCapTex, &sd, &g_blurCapSRV);
+    }
     pBackBuffer->Release();
 }
 
 void CleanupRenderTarget() {
     if (g_mainRenderTargetView) { g_mainRenderTargetView->Release(); g_mainRenderTargetView = nullptr; }
+    if (g_blurCapSRV)           { g_blurCapSRV->Release();          g_blurCapSRV           = nullptr; }
+    if (g_blurCapTex)           { g_blurCapTex->Release();          g_blurCapTex           = nullptr; }
 }
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
