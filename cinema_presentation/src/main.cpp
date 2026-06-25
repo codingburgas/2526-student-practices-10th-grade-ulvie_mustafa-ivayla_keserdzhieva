@@ -25,6 +25,7 @@ void RenderMainMenu(
     ID3D11ShaderResourceView*  rightArrowTex,   int rightArrW,  int rightArrH,
     bool& outShowModal,
     bool& outGoSchedule,
+    bool& outGoTickets,
     bool& outLoggedIn,
     ID3D11ShaderResourceView* blurBgSrv,
     ID3D11ShaderResourceView* googleIconTex,
@@ -39,6 +40,10 @@ void RenderMovieDetail(
 void RenderSchedule(
     bool& goHome, int& selectedMovieIndex,
     bool loggedIn,
+    ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
+
+void RenderMyTickets(
+    bool& goHome, bool& goSchedule,
     ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
 
 static ID3D11Device*           g_pd3dDevice           = nullptr;
@@ -229,6 +234,7 @@ int main(int, char**) {
     int currentHeroIndex   = 0;
     bool showModal         = false;
     bool showSchedule      = false;
+    bool showTickets       = false;
     bool loggedIn          = false;
 
     bool running = true;
@@ -255,18 +261,25 @@ int main(int, char**) {
             RenderSchedule(goHome, selectedMovieIndex, loggedIn,
                 posters, posterWidths, posterHeights);
             if (goHome) showSchedule = false;
+        } else if (showTickets) {
+            bool goHome = false, goSched = false;
+            RenderMyTickets(goHome, goSched,
+                posters, posterWidths, posterHeights);
+            if (goHome)  showTickets = false;
+            if (goSched) { showTickets = false; showSchedule = true; }
         } else {
-            bool goSchedule = false;
+            bool goSchedule = false, goTickets = false;
             RenderMainMenu(heroBanners, heroWidths, heroHeights, currentHeroIndex,
                 posters, posterWidths, posterHeights, selectedMovieIndex,
                 playIconTex, playIconW, playIconH,
                 favIconTex,  favIconW,  favIconH,
                 leftArrTex,  leftArrW,  leftArrH,
                 rightArrTex, rightArrW, rightArrH,
-                showModal, goSchedule, loggedIn, g_blurCapSRV,
+                showModal, goSchedule, goTickets, loggedIn, g_blurCapSRV,
                 googleIconTex, appleIconTex, msIconTex,
                 &userSvc);
             if (goSchedule) showSchedule = true;
+            if (goTickets)  showTickets  = true;
         }
 
         ImGui::Render();

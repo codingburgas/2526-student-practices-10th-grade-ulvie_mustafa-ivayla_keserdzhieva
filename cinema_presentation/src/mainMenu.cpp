@@ -230,6 +230,7 @@ void RenderMainMenu(
     ID3D11ShaderResourceView*  rightArrowTex,   int /*rightArrW*/,  int /*rightArrH*/,
     bool& outShowModal,
     bool& outGoSchedule,
+    bool& outGoTickets,
     bool& outLoggedIn,
     ID3D11ShaderResourceView* blurBgSrv,
     ID3D11ShaderResourceView* googleIconTex,
@@ -325,7 +326,13 @@ void RenderMainMenu(
                                    { tSz.x + 8.0f, NAV_H - 16.0f });
             if (ImGui::IsItemHovered())
                 dl->AddLine({ nx, ulY }, { nx + tSz.x, ulY }, IM_COL32(142,84,100,85), 1.0f);
-            if (ImGui::IsItemClicked() && i == 2) outGoSchedule = true; // "Schedule"
+            if (ImGui::IsItemClicked()) {
+                if (i == 1) { // "Your Tickets" — requires login
+                    if (s_loggedIn) outGoTickets = true;
+                    else { s_showLoginModal = true; s_modalOpenFrame = ImGui::GetFrameCount(); }
+                }
+                if (i == 2) outGoSchedule = true; // "Schedule"
+            }
         }
         nx += tSz.x + 42.0f;
     }
