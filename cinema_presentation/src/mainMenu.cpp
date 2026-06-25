@@ -477,8 +477,10 @@ void RenderMainMenu(
     ImGui::InvisibleButton("playBtn", { BTN_R * 2, BTN_R * 2 });
     if (ImGui::IsItemHovered())
         dl->AddCircleFilled(playC, BTN_R, IM_COL32(233,131,160,210), 32);
-    if (ImGui::IsItemClicked())
-        selectedMovieIndex = s_heroToMovieIdx[currentHeroIndex];
+    if (ImGui::IsItemClicked()) {
+        if (s_loggedIn) selectedMovieIndex = s_heroToMovieIdx[currentHeroIndex];
+        else { s_showLoginModal = true; s_modalOpenFrame = ImGui::GetFrameCount(); }
+    }
 
     dl->AddCircleFilled(heartC, BTN_R, IM_COL32(233,131,160,138), 32);
     if (favoriteIconTex)
@@ -559,8 +561,10 @@ void RenderMainMenu(
         float py  = gridY + row * (P_H + P_GAP);
         if (DrawPoster(dl, { px, py }, { P_W, P_H },
                 (posters && i < TOTAL) ? posters[i] : nullptr,
-                ptitles[i], playIconTex, s_hoverT[i]))
-            selectedMovieIndex = i;
+                ptitles[i], playIconTex, s_hoverT[i])) {
+            if (s_loggedIn) selectedMovieIndex = i;
+            else { s_showLoginModal = true; s_modalOpenFrame = ImGui::GetFrameCount(); }
+        }
     }
 
     int   rows   = (TOTAL + COLS - 1) / COLS;
