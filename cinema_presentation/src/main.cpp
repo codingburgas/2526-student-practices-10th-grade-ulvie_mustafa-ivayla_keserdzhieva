@@ -24,6 +24,8 @@ void RenderMainMenu(
     ID3D11ShaderResourceView*  leftArrowTex,    int leftArrW,   int leftArrH,
     ID3D11ShaderResourceView*  rightArrowTex,   int rightArrW,  int rightArrH,
     bool& outShowModal,
+    bool& outGoSchedule,
+    bool& outLoggedIn,
     ID3D11ShaderResourceView* blurBgSrv,
     ID3D11ShaderResourceView* googleIconTex,
     ID3D11ShaderResourceView* appleIconTex,
@@ -32,6 +34,11 @@ void RenderMainMenu(
 
 void RenderMovieDetail(
     int movieIndex, bool& goBack,
+    ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
+
+void RenderSchedule(
+    bool& goHome, int& selectedMovieIndex,
+    bool loggedIn,
     ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
 
 static ID3D11Device*           g_pd3dDevice           = nullptr;
@@ -221,6 +228,8 @@ int main(int, char**) {
     int selectedMovieIndex = -1;
     int currentHeroIndex   = 0;
     bool showModal         = false;
+    bool showSchedule      = false;
+    bool loggedIn          = false;
 
     bool running = true;
     while (running) {
@@ -241,16 +250,23 @@ int main(int, char**) {
             RenderMovieDetail(selectedMovieIndex, goBack,
                 posters, posterWidths, posterHeights);
             if (goBack) selectedMovieIndex = -1;
+        } else if (showSchedule) {
+            bool goHome = false;
+            RenderSchedule(goHome, selectedMovieIndex, loggedIn,
+                posters, posterWidths, posterHeights);
+            if (goHome) showSchedule = false;
         } else {
+            bool goSchedule = false;
             RenderMainMenu(heroBanners, heroWidths, heroHeights, currentHeroIndex,
                 posters, posterWidths, posterHeights, selectedMovieIndex,
                 playIconTex, playIconW, playIconH,
                 favIconTex,  favIconW,  favIconH,
                 leftArrTex,  leftArrW,  leftArrH,
                 rightArrTex, rightArrW, rightArrH,
-                showModal, g_blurCapSRV,
+                showModal, goSchedule, loggedIn, g_blurCapSRV,
                 googleIconTex, appleIconTex, msIconTex,
                 &userSvc);
+            if (goSchedule) showSchedule = true;
         }
 
         ImGui::Render();

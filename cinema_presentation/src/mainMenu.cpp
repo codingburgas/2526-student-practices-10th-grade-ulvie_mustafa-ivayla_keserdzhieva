@@ -102,6 +102,7 @@ static bool DrawPoster(ImDrawList* dl, ImVec2 pos, ImVec2 sz,
     ImGui::SetCursorScreenPos(pos);
     ImGui::InvisibleButton(("p_" + std::string(title)).c_str(), sz);
     bool hov = ImGui::IsItemHovered();
+    if (ImGui::IsItemClicked()) playClicked = true;
 
     float target = hov ? 1.0f : 0.0f;
     hoverT += (target - hoverT) * 0.15f;
@@ -228,6 +229,8 @@ void RenderMainMenu(
     ID3D11ShaderResourceView*  leftArrowTex,    int /*leftArrW*/,   int /*leftArrH*/,
     ID3D11ShaderResourceView*  rightArrowTex,   int /*rightArrW*/,  int /*rightArrH*/,
     bool& outShowModal,
+    bool& outGoSchedule,
+    bool& outLoggedIn,
     ID3D11ShaderResourceView* blurBgSrv,
     ID3D11ShaderResourceView* googleIconTex,
     ID3D11ShaderResourceView* appleIconTex,
@@ -322,6 +325,7 @@ void RenderMainMenu(
                                    { tSz.x + 8.0f, NAV_H - 16.0f });
             if (ImGui::IsItemHovered())
                 dl->AddLine({ nx, ulY }, { nx + tSz.x, ulY }, IM_COL32(142,84,100,85), 1.0f);
+            if (ImGui::IsItemClicked() && i == 2) outGoSchedule = true; // "Schedule"
         }
         nx += tSz.x + 42.0f;
     }
@@ -840,6 +844,7 @@ void RenderMainMenu(
                 s_resultCode = ok ? 1 : -1;
                 if (ok && s_loginTab == 0) {
                     s_loggedIn       = true;
+                    outLoggedIn      = true;
                     s_showLoginModal = false;
                 }
                 if (!ok && userSvc) {
@@ -853,6 +858,7 @@ void RenderMainMenu(
                 s_resultCode = ok ? 1 : -1;
                 if (ok) {
                     s_loggedIn       = true;
+                    outLoggedIn      = true;
                     s_showLoginModal = false;
                 } else if (userSvc) {
                     const auto& e = userSvc->GetLastError();
