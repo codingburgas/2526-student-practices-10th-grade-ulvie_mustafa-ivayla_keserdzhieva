@@ -164,9 +164,11 @@ d3dcompiler.lib;odbc32.lib</AdditionalDependencies>
     <ClCompile Include="src\mainMenu.cpp" />
     <ClCompile Include="src\movieDetail.cpp" />
     <ClCompile Include="src\myTicketsPage.cpp" />
+    <ClCompile Include="src\purchasePage.cpp" />
     <ClCompile Include="src\schedulePage.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\ticketStore.h" />
     <ClInclude Include="imGUI\imconfig.h" />
     <ClInclude Include="imGUI\imgui.h" />
     <ClInclude Include="imGUI\imgui_impl_dx11.h" />

@@ -176,7 +176,8 @@ static const char* s_monthNames[] = {
 };
 
 void RenderMovieDetail(
-    int movieIndex, bool& goBack,
+    int movieIndex, bool& goBack, bool& goPurchase,
+    int& outSeatCount, int& outTimeIdx, int& outDayOffset, int& outWeekStart,
     ID3D11ShaderResourceView** posters, int* /*posterWidths*/, int* /*posterHeights*/)
 {
     ImGuiIO&    io   = ImGui::GetIO();
@@ -698,6 +699,14 @@ void RenderMovieDetail(
     dl->AddText({ buyX + (BUY_W - buySz.x) * 0.5f, buyY + (BUY_H - buySz.y) * 0.5f },
                 buyOk ? MD_WHITE : IM_COL32(144,90,110,255), "Buy");
     ImGui::PopFont();
+
+    if (ImGui::IsItemClicked() && buyOk) goPurchase = true;
+
+    // Expose snapshot for purchase page
+    outSeatCount  = selCount;
+    outTimeIdx    = selTime;
+    outDayOffset  = s_dayOffset;
+    outWeekStart  = s_weekStart;
 
     ImGui::SetCursorScreenPos({ 0.0f, orig.y + winH - 1.0f });
     ImGui::Dummy({ 1.0f, 1.0f });

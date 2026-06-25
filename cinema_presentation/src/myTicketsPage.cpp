@@ -1,4 +1,5 @@
 #include "imgui.h"
+#include "ticketStore.h"
 #include <d3d11.h>
 #include <string>
 #include <cstdio>
@@ -42,23 +43,6 @@ static void TKPin(ImDrawList* dl, ImVec2 c, float r, ImU32 col) {
     dl->AddCircleFilled({ c.x, c.y - r * 0.18f }, r * 0.18f, TK_BG, 16);
 }
 
-// ── Ticket data ───────────────────────────────────────────────────────────────
-struct TKTicket {
-    int         posterIdx;
-    const char* hall;
-    const char* row;
-    const char* seat;
-    const char* fmt;
-    const char* time;
-    const char* dayName;
-    int         dayNum;
-};
-
-static const TKTicket g_tickets[] = {
-    { 2, "A", "B", "08", "3D", "11:45 AM", "Mon", 22 },
-    { 4, "A", "B", "08", "3D", "9:25 AM",  "Wed", 24 },
-};
-static constexpr int TK_COUNT = 2;
 
 void RenderMyTickets(
     bool& goHome, bool& goSchedule,
@@ -171,8 +155,16 @@ void RenderMyTickets(
     float cardW = winW - 2.0f * SIDE_PAD;
     float cardY = orig.y + NAV_H + TOP_MARGIN;
 
-    for (int ti = 0; ti < TK_COUNT; ti++) {
-        const TKTicket& t = g_tickets[ti];
+    if (g_purchasedTickets.empty()) {
+        ImGui::PushFont(F[4]);
+        const char* emptyMsg = "No tickets yet — buy one from the schedule!";
+        ImVec2 emSz = ImGui::CalcTextSize(emptyMsg);
+        dl->AddText({ orig.x + (winW - emSz.x) * 0.5f, cardY + 40.0f }, TK_MUTED, emptyMsg);
+        ImGui::PopFont();
+    }
+
+    for (int ti = 0; ti < (int)g_purchasedTickets.size(); ti++) {
+        const PurchasedTicket& t = g_purchasedTickets[ti];
         ImVec2 cTL = { orig.x + SIDE_PAD, cardY };
         ImVec2 cBR = { orig.x + SIDE_PAD + cardW, cardY + CARD_H };
 
@@ -208,11 +200,11 @@ void RenderMyTickets(
 
         struct BSec { const char* big; const char* sub; ImU32 bigCol; };
         BSec secs[5] = {
-            { "BURGAS", " city",  TK_WHITE  },
-            { t.hall,   " hall",  TK_WHITE  },
-            { t.row,    " row",   TK_WHITE  },
-            { t.seat,   " seat",  TK_WHITE  },
-            { t.fmt,    nullptr,  TK_ACCENT },
+            { "BURGAS",          " city",  TK_WHITE  },
+            { t.hall.c_str(),    " hall",  TK_WHITE  },
+            { t.row.c_str(),     " row",   TK_WHITE  },
+            { t.seat.c_str(),    " seat",  TK_WHITE  },
+            { t.fmt.c_str(),     nullptr,  TK_ACCENT },
         };
         float bx    = cx + 14.0f;
         float midBY = cy + BADGE_H * 0.5f;
@@ -253,10 +245,10 @@ void RenderMyTickets(
         dl->AddRectFilled(tpTL, tpBR, TK_DARK, 10.0f);
         dl->AddRect(tpTL, tpBR, TK_NBDR, 10.0f, 0, 1.0f);
         ImGui::PushFont(F[1]);
-        ImVec2 timeSz = ImGui::CalcTextSize(t.time);
+        ImVec2 timeSz = ImGui::CalcTextSize(t.time.c_str());
         dl->AddText({ timeX + (TIME_PILL_W - timeSz.x) * 0.5f,
                       cy    + (PILL_H       - timeSz.y) * 0.5f },
-                    TK_WHITE, t.time);
+                    TK_WHITE, t.time.c_str());
         ImGui::PopFont();
 
         // Date pill
@@ -265,9 +257,9 @@ void RenderMyTickets(
         dl->AddRect(dpTL, dpBR, TK_NBDR, 10.0f, 0, 1.0f);
         // day name (small, muted, top-center)
         ImGui::PushFont(F[2]);
-        ImVec2 daySz = ImGui::CalcTextSize(t.dayName);
+        ImVec2 daySz = ImGui::CalcTextSize(t.dayName.c_str());
         dl->AddText({ dateX + (DATE_PILL_W - daySz.x) * 0.5f, cy + 7.0f },
-                    TK_MUTED, t.dayName);
+                    TK_MUTED, t.dayName.c_str());
         ImGui::PopFont();
         // day number (large, white, below)
         ImGui::PushFont(F[3]);

@@ -34,7 +34,14 @@ void RenderMainMenu(
     UserService* userSvc);
 
 void RenderMovieDetail(
-    int movieIndex, bool& goBack,
+    int movieIndex, bool& goBack, bool& goPurchase,
+    int& outSeatCount, int& outTimeIdx, int& outDayOffset, int& outWeekStart,
+    ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
+
+void RenderPurchase(
+    bool& goBack, bool& goHome, bool& goTickets,
+    int movieIndex, int seatCount, int timeIdx,
+    int dayOffset, int weekStart,
     ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
 
 void RenderSchedule(
@@ -235,7 +242,12 @@ int main(int, char**) {
     bool showModal         = false;
     bool showSchedule      = false;
     bool showTickets       = false;
+    bool showPurchase      = false;
     bool loggedIn          = false;
+    int  purchaseSeatCount = 0;
+    int  purchaseTimeIdx   = 0;
+    int  purchaseDayOffset = 0;
+    int  purchaseWeekStart = 0;
 
     bool running = true;
     while (running) {
@@ -251,11 +263,29 @@ int main(int, char**) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        if (selectedMovieIndex >= 0) {
-            bool goBack = false;
-            RenderMovieDetail(selectedMovieIndex, goBack,
+        if (showPurchase) {
+            bool goBack = false, goHome = false, goTickets = false;
+            RenderPurchase(goBack, goHome, goTickets,
+                selectedMovieIndex, purchaseSeatCount, purchaseTimeIdx,
+                purchaseDayOffset, purchaseWeekStart,
+                posters, posterWidths, posterHeights);
+            if (goBack) showPurchase = false;
+            if (goHome) { showPurchase = false; selectedMovieIndex = -1; }
+            if (goTickets) { showPurchase = false; selectedMovieIndex = -1; showTickets = true; }
+        } else if (selectedMovieIndex >= 0) {
+            bool goBack = false, goPurchase = false;
+            int mdSeatCount = 0, mdTimeIdx = 0, mdDayOffset = 0, mdWeekStart = 0;
+            RenderMovieDetail(selectedMovieIndex, goBack, goPurchase,
+                mdSeatCount, mdTimeIdx, mdDayOffset, mdWeekStart,
                 posters, posterWidths, posterHeights);
             if (goBack) selectedMovieIndex = -1;
+            if (goPurchase) {
+                purchaseSeatCount = mdSeatCount;
+                purchaseTimeIdx   = mdTimeIdx;
+                purchaseDayOffset = mdDayOffset;
+                purchaseWeekStart = mdWeekStart;
+                showPurchase      = true;
+            }
         } else if (showSchedule) {
             bool goHome = false;
             RenderSchedule(goHome, selectedMovieIndex, loggedIn,
