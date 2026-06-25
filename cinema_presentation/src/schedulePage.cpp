@@ -86,6 +86,10 @@ static constexpr int SP_ENTRY_COUNT = 5;
 // ── Day-strip state (separate from movieDetail's) ─────────────────────────────
 static int s_spDayOffset = 0;
 static int s_spWeekStart = 0;
+// Selected time slot per [entry][hall], -1 = none
+static int s_selTime[SP_ENTRY_COUNT][2] = {
+    {-1,-1}, {-1,-1}, {-1,-1}, {-1,-1}, {-1,-1}
+};
 
 static const char* sp_dayNames[]   = { "Sun","Mon","Tue","Wed","Thu","Fri","Sat" };
 
@@ -357,32 +361,60 @@ void RenderSchedule(
             tx += 14.0f;
             cdl->AddText(F[3], fSz3, { tx, midBY - fSz3 * 0.54f }, SP_ACCENT, h.fmt);
 
-            // Time slot buttons — manual hit testing, zero ImGui widget calls
+            // Time slot buttons + BOOK button — manual hit testing
             float screenTRowY = screenHSecY + BADGE_H + 12.0f;
+            bool  rowVis = screenTRowY < listTop + listH && screenTRowY + TIME_H_ > listTop;
+
             for (int ti = 0; ti < 4; ti++) {
-                float screenTBX = screenRX + (float)ti * (TIME_BTN_W + TIME_BTN_GAP);
+                float  screenTBX = screenRX + (float)ti * (TIME_BTN_W + TIME_BTN_GAP);
                 ImVec2 tTL = { screenTBX, screenTRowY };
                 ImVec2 tBR = { screenTBX + TIME_BTN_W, screenTRowY + TIME_H_ };
 
-                bool inView = tTL.y < listTop + listH && tBR.y > listTop;
-                bool hov = inView &&
+                bool hov = rowVis &&
                     mouse.x >= tTL.x && mouse.x <= tBR.x &&
                     mouse.y >= tTL.y && mouse.y <= tBR.y;
                 bool clk = hov && mouseClicked;
+                bool sel = (s_selTime[ei][hi] == ti);
 
-                cdl->AddRectFilled(tTL, tBR,
-                    hov ? IM_COL32(50,50,58,255) : IM_COL32(32,32,38,255), 10.0f);
-                cdl->AddRect(tTL, tBR,
-                    hov ? SP_TITLE : SP_BORDER, 10.0f, 0, 1.0f);
+                if (clk) s_selTime[ei][hi] = ti;
+
+                // Selected: filled pink; hovered: lighter card; normal: dark card
+                ImU32 bgCol = sel  ? IM_COL32(178, 35, 75, 255)  :
+                              hov  ? IM_COL32(52,  52, 60, 255)   :
+                                     IM_COL32(32,  32, 38, 255);
+                ImU32 bdCol = sel  ? SP_TITLE : (hov ? SP_ACCENT : SP_BORDER);
+                ImU32 txCol = (sel || hov) ? SP_WHITE : SP_MUTED;
+
+                cdl->AddRectFilled(tTL, tBR, bgCol, 10.0f);
+                cdl->AddRect(tTL, tBR, bdCol, 10.0f, 0, sel ? 1.5f : 1.0f);
 
                 ImVec2 tsz = F[1]->CalcTextSizeA(fSz1, FLT_MAX, 0.0f, h.times[ti]);
                 cdl->AddText(F[1], fSz1,
                     { screenTBX + (TIME_BTN_W - tsz.x) * 0.5f,
                       screenTRowY + (TIME_H_ - tsz.y) * 0.5f },
-                    hov ? SP_WHITE : SP_MUTED, h.times[ti]);
-
-                if (clk && loggedIn) selectedMovieIndex = e.posterIdx;
+                    txCol, h.times[ti]);
             }
+
+            // BOOK button — always visible, navigates to seat-selection detail page
+            constexpr float BOOK_W   = 88.0f;
+            constexpr float BOOK_GAP = 14.0f;
+            float   bookX   = screenRX + 4.0f * (TIME_BTN_W + TIME_BTN_GAP) + BOOK_GAP;
+            ImVec2  bookTL  = { bookX, screenTRowY };
+            ImVec2  bookBR  = { bookX + BOOK_W, screenTRowY + TIME_H_ };
+            bool    bookHov = rowVis &&
+                mouse.x >= bookTL.x && mouse.x <= bookBR.x &&
+                mouse.y >= bookTL.y && mouse.y <= bookBR.y;
+            bool    bookClk = bookHov && mouseClicked;
+
+            cdl->AddRectFilled(bookTL, bookBR,
+                bookHov ? IM_COL32(245, 70, 115, 255) : SP_TITLE, 10.0f);
+            ImVec2 bkSz = F[1]->CalcTextSizeA(fSz1, FLT_MAX, 0.0f, "BOOK");
+            cdl->AddText(F[1], fSz1,
+                { bookX + (BOOK_W - bkSz.x) * 0.5f,
+                  screenTRowY + (TIME_H_ - bkSz.y) * 0.5f },
+                SP_WHITE, "BOOK");
+
+            if (bookClk) selectedMovieIndex = e.posterIdx;
         }
     }
 
