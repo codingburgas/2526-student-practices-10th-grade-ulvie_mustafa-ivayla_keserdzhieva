@@ -140,17 +140,17 @@ void RenderMyTickets(
              8.0f, IM_COL32(144,136,144,145));
 
     // ── Ticket cards ──────────────────────────────────────────────────────────
-    constexpr float SIDE_PAD    = 36.0f;
-    constexpr float CARD_H      = 172.0f;
-    constexpr float CARD_GAP    = 28.0f;
-    constexpr float TOP_MARGIN  = 72.0f;
-    constexpr float POST_W      = 118.0f;
-    constexpr float POST_H      = 152.0f;
-    constexpr float CARD_PAD    = 18.0f;
-    constexpr float BADGE_H     = 44.0f;
-    constexpr float PILL_H      = 52.0f;
-    constexpr float TIME_PILL_W = 130.0f;
-    constexpr float DATE_PILL_W = 100.0f;
+    constexpr float SIDE_PAD      = 36.0f;
+    constexpr float CARD_H        = 310.0f;
+    constexpr float CARD_GAP      = 28.0f;
+    constexpr float TOP_MARGIN    = 48.0f;
+    // Poster fills full card height (2px margin to clear border radius)
+    // Standard movie poster 2:3 ratio → width = (310-4) * (2/3) ≈ 204
+    constexpr float POST_H_INNER  = CARD_H - 4.0f;
+    constexpr float POST_W        = POST_H_INNER * 2.0f / 3.0f;
+    constexpr float CONTENT_PAD   = 24.0f;
+    constexpr float BARCODE_SEC_W = 130.0f;
+    constexpr float BARCODE_PAD   = 12.0f;
 
     float cardW = winW - 2.0f * SIDE_PAD;
     float cardY = orig.y + NAV_H + TOP_MARGIN;
@@ -163,111 +163,101 @@ void RenderMyTickets(
         ImGui::PopFont();
     }
 
+    // Barcode pattern: values are bar widths (dark/light alternate), unit = 2px
+    static const uint8_t s_barPat[] = {
+        3,1,2,1,3,2,1,3,1,2,1,1,3,2,1,2,3,1,2,1,1,3,1,2,3,1,1,2,1,3,2,1,2,1,3,1,2,2,1,3
+    };
+
     for (int ti = 0; ti < (int)g_purchasedTickets.size(); ti++) {
         const PurchasedTicket& t = g_purchasedTickets[ti];
+
         ImVec2 cTL = { orig.x + SIDE_PAD, cardY };
         ImVec2 cBR = { orig.x + SIDE_PAD + cardW, cardY + CARD_H };
 
+        // Card background & border
         dl->AddRectFilled(cTL, cBR, TK_CARD, 14.0f);
         dl->AddRect(cTL, cBR, TK_CBDR, 14.0f, 0, 1.5f);
 
-        // Poster
-        float pOffY = (CARD_H - POST_H) * 0.5f;
-        ImVec2 pTL  = { cTL.x + CARD_PAD, cardY + pOffY };
-        ImVec2 pBR  = { pTL.x + POST_W, pTL.y + POST_H };
+        // Poster: flush with card top/bottom (2px margin to clear the border radius)
+        ImVec2 pTL = { cTL.x + 2.0f, cTL.y + 2.0f };
+        ImVec2 pBR = { pTL.x + POST_W, cBR.y - 2.0f };
+        dl->PushClipRect(cTL, cBR, true);
         if (posters && posters[t.posterIdx])
             dl->AddImage((ImTextureID)posters[t.posterIdx], pTL, pBR,
                          { 0,0 }, { 1,1 }, TK_WHITE);
         else
-            dl->AddRectFilled(pTL, pBR, IM_COL32(34,34,44,255), 8.0f);
-        dl->AddRect(pTL, pBR, IM_COL32(200,80,110,50), 8.0f, 0, 1.0f);
+            dl->AddRectFilled(pTL, pBR, IM_COL32(34,34,44,255), 0.0f);
+        dl->PopClipRect();
+
+        // Dashed separator before barcode
+        float sepX = cBR.x - BARCODE_SEC_W;
+        for (float dy = cTL.y + 10.0f; dy < cBR.y - 10.0f; dy += 9.0f)
+            dl->AddLine({ sepX, dy }, { sepX, dy + 5.0f }, TK_CBDR, 1.5f);
+
+        // Barcode: horizontal bars vertically centered in the card
+        float bcLeft  = sepX + BARCODE_PAD;
+        float bcRight = cBR.x - BARCODE_PAD;
+        // Compute total barcode height to center it
+        float totalBcH = 0.0f;
+        for (int k = 0; k < (int)sizeof(s_barPat); k++)
+            totalBcH += s_barPat[k] * 2.5f + (k < (int)sizeof(s_barPat) - 1 ? 1.5f : 0.0f);
+        float by   = cTL.y + (CARD_H - totalBcH) * 0.5f;
+        bool  dark = true;
+        for (int k = 0; k < (int)sizeof(s_barPat); k++) {
+            float bh = s_barPat[k] * 2.5f;
+            if (dark)
+                dl->AddRectFilled({ bcLeft, by }, { bcRight, by + bh }, TK_TITLE);
+            by  += bh + 1.5f;
+            dark = !dark;
+        }
 
         // Content column
-        float cx = pTL.x + POST_W + 22.0f;
-        float cy = cardY + CARD_PAD + 2.0f;
+        float cx = pBR.x + CONTENT_PAD;
+        float cy = cTL.y + 30.0f;
+        float cw = sepX - cx - 12.0f;
 
-        // "Place:" label
-        ImGui::PushFont(F[1]);
-        dl->AddText({ cx, cy }, TK_MUTED, "Place:");
-        cy += F[1]->LegacySize + 6.0f;
-        ImGui::PopFont();
-
-        // Place badge: BURGAS city | A hall | B row | 08 seat | 3D
-        constexpr float BADGE_W = 440.0f;
-        ImVec2 bTL = { cx, cy }, bBR = { cx + BADGE_W, cy + BADGE_H };
-        dl->AddRectFilled(bTL, bBR, TK_DARK, 10.0f);
-        dl->AddRect(bTL, bBR, TK_NBDR, 10.0f, 0, 1.0f);
-
-        struct BSec { const char* big; const char* sub; ImU32 bigCol; };
-        BSec secs[5] = {
-            { "BURGAS",          " city",  TK_WHITE  },
-            { t.hall.c_str(),    " hall",  TK_WHITE  },
-            { t.row.c_str(),     " row",   TK_WHITE  },
-            { t.seat.c_str(),    " seat",  TK_WHITE  },
-            { t.fmt.c_str(),     nullptr,  TK_ACCENT },
-        };
-        float bx    = cx + 14.0f;
-        float midBY = cy + BADGE_H * 0.5f;
-        for (int si = 0; si < 5; si++) {
-            if (si > 0) {
-                dl->AddLine({ bx, cy + 10.0f }, { bx, cy + BADGE_H - 10.0f }, TK_NBDR, 1.0f);
-                bx += 12.0f;
-            }
-            ImGui::PushFont(F[4]);
-            ImVec2 bigSz = ImGui::CalcTextSize(secs[si].big);
-            dl->AddText({ bx, midBY - bigSz.y * 0.54f }, secs[si].bigCol, secs[si].big);
-            bx += bigSz.x;
-            ImGui::PopFont();
-            if (secs[si].sub) {
-                ImGui::PushFont(F[2]);
-                ImVec2 subSz = ImGui::CalcTextSize(secs[si].sub);
-                dl->AddText({ bx + 1.0f, midBY - subSz.y * 0.5f + 2.0f },
-                            TK_MUTED, secs[si].sub);
-                bx += subSz.x + 12.0f;
-                ImGui::PopFont();
-            } else {
-                bx += 12.0f;
-            }
-        }
-        cy += BADGE_H + 12.0f;
-
-        // "Time:" and "Date:" labels
-        float timeX = cx;
-        float dateX = cx + TIME_PILL_W + 24.0f;
-        ImGui::PushFont(F[1]);
-        dl->AddText({ timeX, cy }, TK_MUTED, "Time:");
-        dl->AddText({ dateX, cy }, TK_MUTED, "Date:");
-        cy += F[1]->LegacySize + 6.0f;
-        ImGui::PopFont();
-
-        // Time pill
-        ImVec2 tpTL = { timeX, cy }, tpBR = { timeX + TIME_PILL_W, cy + PILL_H };
-        dl->AddRectFilled(tpTL, tpBR, TK_DARK, 10.0f);
-        dl->AddRect(tpTL, tpBR, TK_NBDR, 10.0f, 0, 1.0f);
-        ImGui::PushFont(F[1]);
-        ImVec2 timeSz = ImGui::CalcTextSize(t.time.c_str());
-        dl->AddText({ timeX + (TIME_PILL_W - timeSz.x) * 0.5f,
-                      cy    + (PILL_H       - timeSz.y) * 0.5f },
-                    TK_WHITE, t.time.c_str());
-        ImGui::PopFont();
-
-        // Date pill
-        ImVec2 dpTL = { dateX, cy }, dpBR = { dateX + DATE_PILL_W, cy + PILL_H };
-        dl->AddRectFilled(dpTL, dpBR, TK_DARK, 10.0f);
-        dl->AddRect(dpTL, dpBR, TK_NBDR, 10.0f, 0, 1.0f);
-        // day name (small, muted, top-center)
-        ImGui::PushFont(F[2]);
-        ImVec2 daySz = ImGui::CalcTextSize(t.dayName.c_str());
-        dl->AddText({ dateX + (DATE_PILL_W - daySz.x) * 0.5f, cy + 7.0f },
-                    TK_MUTED, t.dayName.c_str());
-        ImGui::PopFont();
-        // day number (large, white, below)
+        // Movie title (large pink)
         ImGui::PushFont(F[3]);
-        char numBuf[4]; snprintf(numBuf, sizeof(numBuf), "%d", t.dayNum);
-        ImVec2 numSz = ImGui::CalcTextSize(numBuf);
-        dl->AddText({ dateX + (DATE_PILL_W - numSz.x) * 0.5f,
-                      cy    + 7.0f + F[2]->LegacySize + 2.0f },
-                    TK_WHITE, numBuf);
+        dl->AddText(ImGui::GetFont(), F[3]->LegacySize,
+                    { cx, cy }, TK_TITLE, t.title.c_str(), nullptr, cw);
+        float titleH = ImGui::GetFont()->CalcTextSizeA(
+            F[3]->LegacySize, cw, cw, t.title.c_str()).y;
+        cy += titleH + 8.0f;
+        ImGui::PopFont();
+
+        // Ticket type
+        ImGui::PushFont(F[1]);
+        std::string typeLbl = t.ticketType + " ticket";
+        dl->AddText({ cx, cy }, TK_MUTED, typeLbl.c_str());
+        cy += F[1]->LegacySize + 22.0f;
+        ImGui::PopFont();
+
+        // Date + time on one line
+        ImGui::PushFont(F[1]);
+        char dateLine[48];
+        snprintf(dateLine, sizeof(dateLine), "%02d/%02d/%d    %s",
+                 t.dayNum, t.month, t.year, t.time.c_str());
+        dl->AddText({ cx, cy }, TK_WHITE, dateLine);
+        cy += F[1]->LegacySize + 8.0f;
+        ImGui::PopFont();
+
+        // Hall + format + seat on one line
+        ImGui::PushFont(F[1]);
+        char hallLine[64];
+        snprintf(hallLine, sizeof(hallLine), "Hall %s    %s    Seat %s",
+                 t.hall.c_str(), t.fmt.c_str(), t.seat.c_str());
+        dl->AddText({ cx, cy }, TK_MUTED, hallLine);
+        cy += F[1]->LegacySize + 28.0f;
+        ImGui::PopFont();
+
+        // City & Location
+        ImGui::PushFont(F[1]);
+        float valX = cx + 106.0f;
+        dl->AddText({ cx, cy },   TK_MUTED, "City:");
+        dl->AddText({ valX, cy }, TK_WHITE,  "Burgas");
+        cy += F[1]->LegacySize + 10.0f;
+        dl->AddText({ cx, cy },   TK_MUTED, "Location:");
+        dl->AddText({ valX, cy }, TK_WHITE,  "Galleria Burgas");
         ImGui::PopFont();
 
         cardY += CARD_H + CARD_GAP;

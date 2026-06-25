@@ -39,7 +39,7 @@ static const char* s_monNames[]  = { "Jan","Feb","Mar","Apr","May","Jun",
                                      "Jul","Aug","Sep","Oct","Nov","Dec" };
 
 // ── Per-session state ─────────────────────────────────────────────────────────
-static int  s_payMethod  = 0;       // 0=card  1=gpay  2=apay
+static int  s_payMethod  = 0;       // 0=card  1=gpay  2=apay  3=cash
 static char s_cardNum[20]  = "";
 static char s_cardName[64] = "";
 static char s_cardExp[6]   = "";
@@ -355,10 +355,10 @@ void RenderPurchase(
     ry += F[1]->LegacySize + 10.0f;
     ImGui::PopFont();
 
-    const char* methods[] = { "Credit Card", "Google Pay", "Apple Pay" };
+    const char* methods[] = { "Credit Card", "Google Pay", "Apple Pay", "Cash on Place" };
     constexpr float METHOD_H = 46.0f;
-    float mw = (rw - 16.0f) / 3.0f;
-    for (int i = 0; i < 3; i++) {
+    float mw = (rw - 24.0f) / 4.0f;
+    for (int i = 0; i < 4; i++) {
         float mx = rx + i * (mw + 8.0f);
         bool sel = (s_payMethod == i);
         ImVec2 mTL = { mx, ry }, mBR = { mx+mw, ry+METHOD_H };
@@ -408,7 +408,9 @@ void RenderPurchase(
         ImGui::PushFont(F[1]);
         const char* note = (s_payMethod == 1)
             ? "You will be redirected to Google Pay\nto complete your payment securely."
-            : "You will be redirected to Apple Pay\nto complete your payment securely.";
+            : (s_payMethod == 2)
+            ? "You will be redirected to Apple Pay\nto complete your payment securely."
+            : "Pay with cash at the cinema entrance.\nPlease arrive 10 minutes early.";
         ImVec2 nSz = ImGui::CalcTextSize(note, nullptr, false, rw - 28.0f);
         dl->AddText(ImGui::GetFont(), F[1]->LegacySize,
                     { rx + 14.0f, ry + (64.0f - nSz.y) * 0.5f },
@@ -467,16 +469,20 @@ void RenderPurchase(
         s_confirmed = true;
         for (int s = 0; s < nTix; s++) {
             PurchasedTicket tk;
-            tk.posterIdx = idx;
-            tk.hall      = "A";
-            tk.row       = "B";
+            tk.posterIdx  = idx;
+            tk.title      = pm.title;
+            tk.hall       = "A";
+            tk.row        = "B";
             char seatBuf[4];
             snprintf(seatBuf, sizeof(seatBuf), "%02d", s + 1);
-            tk.seat      = seatBuf;
-            tk.fmt       = "3D";
-            tk.time      = timeStr;
-            tk.dayName   = s_dayNames3[sd.tm_wday];
-            tk.dayNum    = sd.tm_mday;
+            tk.seat       = seatBuf;
+            tk.fmt        = "2 D";
+            tk.time       = timeStr;
+            tk.dayName    = s_dayNames3[sd.tm_wday];
+            tk.dayNum     = sd.tm_mday;
+            tk.month      = sd.tm_mon + 1;
+            tk.year       = sd.tm_year + 1900;
+            tk.ticketType = "Adult";
             g_purchasedTickets.push_back(tk);
         }
     }

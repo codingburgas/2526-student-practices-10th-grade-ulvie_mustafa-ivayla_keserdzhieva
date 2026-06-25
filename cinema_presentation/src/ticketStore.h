@@ -4,6 +4,7 @@
 
 struct PurchasedTicket {
     int         posterIdx;
+    std::string title;
     std::string hall;
     std::string row;
     std::string seat;
@@ -11,6 +12,9 @@ struct PurchasedTicket {
     std::string time;
     std::string dayName;
     int         dayNum;
+    int         month;
+    int         year;
+    std::string ticketType;
 };
 
 // Filled by movieDetail when Buy is clicked; consumed by purchasePage on confirm
