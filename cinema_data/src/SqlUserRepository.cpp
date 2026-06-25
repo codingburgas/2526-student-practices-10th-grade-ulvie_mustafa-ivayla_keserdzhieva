@@ -165,6 +165,46 @@ bool SqlUserRepository::CreateVerificationCode(const std::string& email, std::st
     return ok;
 }
 
+bool SqlUserRepository::LoginByEmail(const std::string& email) {
+    if (!Connect()) return false;
+
+    SQLHSTMT hStmt = SQL_NULL_HSTMT;
+    SQLAllocHandle(SQL_HANDLE_STMT, hDbc, &hStmt);
+    SQLPrepareA(hStmt, (SQLCHAR*)"SELECT COUNT(*) FROM Users WHERE Email=?", SQL_NTS);
+
+    SQLLEN le = email.size();
+    SQLBindParameter(hStmt,1,SQL_PARAM_INPUT,SQL_C_CHAR,SQL_VARCHAR,256,0,
+                     (SQLPOINTER)email.c_str(), email.size(), &le);
+
+    bool found = false;
+    if (SQL_SUCCEEDED(SQLExecute(hStmt))) {
+        SQLINTEGER count = 0; SQLLEN ind = 0;
+        SQLBindCol(hStmt, 1, SQL_C_LONG, &count, sizeof(count), &ind);
+        if (SQL_SUCCEEDED(SQLFetch(hStmt))) found = (count > 0);
+    }
+    SQLFreeHandle(SQL_HANDLE_STMT, hStmt);
+    Disconnect();
+    if (!found) m_lastError = "No account found for this email.";
+    return found;
+}
+
+bool SqlUserRepository::RegisterOAuthUser(const std::string& name, const std::string& email) {
+    // Random unguessable internal password — OAuth users never log in with it directly
+    std::mt19937_64 gen(std::random_device{}());
+    std::string pw = std::to_string(gen()) + std::to_string(gen());
+
+    UserRecord u;
+    u.name     = name.empty() ? email : name;
+    u.surname  = "";
+    u.username = email;   // email doubles as the unique username for OAuth accounts
+    u.password = pw;
+    u.email    = email;
+    u.role     = "customer";
+    u.company  = "";
+    u.city     = "";
+    return RegisterUser(u);
+}
+
 bool SqlUserRepository::ValidateVerificationCode(const std::string& email, const std::string& code) {
     if (!Connect()) return false;
 

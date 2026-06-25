@@ -832,7 +832,7 @@ void RenderMainMenu(
                 } else {
                     s_resultCode = 0;
                 }
-            } else {                        // register / login result
+            } else if (s_authAction == 2) {  // register / login result
                 s_resultCode = ok ? 1 : -1;
                 if (ok && s_loginTab == 0) {
                     s_loggedIn       = true;
@@ -844,6 +844,15 @@ void RenderMainMenu(
                         ? (s_loginTab == 0 ? "Incorrect username or password."
                                            : "Registration failed. Username may already be taken.")
                         : e.c_str());
+                }
+            } else if (s_authAction == 3) {  // OAuth result
+                s_resultCode = ok ? 1 : -1;
+                if (ok) {
+                    s_loggedIn       = true;
+                    s_showLoginModal = false;
+                } else if (userSvc) {
+                    const auto& e = userSvc->GetLastError();
+                    strcpy_s(s_validMsg, e.empty() ? "OAuth login failed." : e.c_str());
                 }
             }
             s_authPending = false;
@@ -909,6 +918,17 @@ void RenderMainMenu(
         ImGui::PopFont();
         curY += 44.0f + 8.0f;
 
+        // Waiting-for-browser feedback (OAuth in progress)
+        if (s_authPending && s_authAction == 3) {
+            ImGui::PushFont(F[1]);
+            const char* wMsg = "Waiting for browser login...";
+            ImVec2 wSz = ImGui::CalcTextSize(wMsg);
+            dl->AddText({ fieldX + (fieldW - wSz.x) * 0.5f, curY },
+                        IM_COL32(200, 200, 210, 200), wMsg);
+            ImGui::PopFont();
+            curY += wSz.y + 8.0f;
+        }
+
         // Result feedback
         if (s_resultCode != 0) {
             ImGui::PushFont(F[1]);
@@ -947,33 +967,91 @@ void RenderMainMenu(
             ImGui::PopFont();
             curY += 24.0f;
 
-            constexpr float SOC_H = 44.0f, SOC_GAP = 8.0f;
-            auto drawSocBtn = [&](const char* id, const char* label,
-                                   ID3D11ShaderResourceView* iconTex,
-                                   void(*iconFallback)(ImDrawList*, ImVec2, float, ImU32)) {
-                ImVec2 sTL = { fieldX, curY }, sBR = { fieldX + fieldW, curY + SOC_H };
+            auto startOAuth = [&](OAuthProvider prov) {
+                if (!userSvc || s_authPending) return;
+                s_resultCode  = 0;
+                s_validMsg[0] = 0;
+                s_authPending = true;
+                s_authAction  = 3;
+                s_authFuture  = std::async(std::launch::async, [=]() -> bool {
+                    return userSvc->LoginWithOAuth(prov);
+                });
+            };
+
+            // Google
+            {
+                ImVec2 sTL = { fieldX, curY }, sBR = { fieldX + fieldW, curY + 44.0f };
                 ImGui::SetCursorScreenPos(sTL);
-                ImGui::InvisibleButton(id, { fieldW, SOC_H });
-                bool hov = ImGui::IsItemHovered();
+                ImGui::InvisibleButton("googleBtn", { fieldW, 44.0f });
+                bool hov = ImGui::IsItemHovered() && !s_authPending;
+                if (ImGui::IsItemClicked()) startOAuth(OAuthProvider::Google);
                 dl->AddRectFilled(sTL, sBR,
                     hov ? IM_COL32(50,50,58,255) : IM_COL32(38,38,44,255), 8.0f);
                 dl->AddRect(sTL, sBR, IM_COL32(75,75,85,255), 8.0f, 0, 1.0f);
-                float icCX = sTL.x + 52.0f, icCY = sTL.y + SOC_H * 0.5f;
-                if (iconTex)
-                    dl->AddImage((ImTextureID)iconTex,
+                float icCX = sTL.x + 52.0f, icCY = sTL.y + 22.0f;
+                if (googleIconTex)
+                    dl->AddImage((ImTextureID)googleIconTex,
                         { icCX - 10.0f, icCY - 10.0f }, { icCX + 10.0f, icCY + 10.0f });
                 else
-                    iconFallback(dl, { icCX, icCY }, 9.0f, IM_COL32(255,255,255,220));
+                    DrawGoogleIcon(dl, { icCX, icCY }, 9.0f, IM_COL32(255,255,255,220));
                 ImGui::PushFont(F[1]);
-                ImVec2 lblSz = ImGui::CalcTextSize(label);
-                dl->AddText({ sTL.x + 70.0f, sTL.y + (SOC_H - lblSz.y) * 0.5f },
-                            IM_COL32(255,255,255,220), label);
+                ImVec2 lsz = ImGui::CalcTextSize("Continue with Google");
+                dl->AddText({ sTL.x + 70.0f, sTL.y + (44.0f - lsz.y) * 0.5f },
+                            IM_COL32(255,255,255,220), "Continue with Google");
                 ImGui::PopFont();
-                curY += SOC_H + SOC_GAP;
-            };
-            drawSocBtn("googleBtn", "Continue with Google", googleIconTex, DrawGoogleIcon);
-            drawSocBtn("appleBtn",  "Continue with Apple",  appleIconTex,  DrawAppleIcon);
-            drawSocBtn("teamsBtn",  "Continue with Teams",  msIconTex,     DrawWindowsIcon);
+                curY += 44.0f + 8.0f;
+            }
+
+            // Apple — not supported on Windows (Apple Sign In requires macOS/iOS SDK)
+            {
+                ImVec2 sTL = { fieldX, curY }, sBR = { fieldX + fieldW, curY + 44.0f };
+                ImGui::SetCursorScreenPos(sTL);
+                ImGui::InvisibleButton("appleBtn", { fieldW, 44.0f });
+                if (ImGui::IsItemClicked()) {
+                    strcpy_s(s_validMsg, "Apple Sign In is not supported on Windows.");
+                    s_resultCode = -3;
+                }
+                bool hov = ImGui::IsItemHovered() && !s_authPending;
+                dl->AddRectFilled(sTL, sBR,
+                    hov ? IM_COL32(50,50,58,255) : IM_COL32(38,38,44,255), 8.0f);
+                dl->AddRect(sTL, sBR, IM_COL32(75,75,85,255), 8.0f, 0, 1.0f);
+                float icCX = sTL.x + 52.0f, icCY = sTL.y + 22.0f;
+                if (appleIconTex)
+                    dl->AddImage((ImTextureID)appleIconTex,
+                        { icCX - 10.0f, icCY - 10.0f }, { icCX + 10.0f, icCY + 10.0f });
+                else
+                    DrawAppleIcon(dl, { icCX, icCY }, 9.0f, IM_COL32(255,255,255,220));
+                ImGui::PushFont(F[1]);
+                ImVec2 lsz = ImGui::CalcTextSize("Continue with Apple");
+                dl->AddText({ sTL.x + 70.0f, sTL.y + (44.0f - lsz.y) * 0.5f },
+                            IM_COL32(255,255,255,100), "Continue with Apple");
+                ImGui::PopFont();
+                curY += 44.0f + 8.0f;
+            }
+
+            // Microsoft
+            {
+                ImVec2 sTL = { fieldX, curY }, sBR = { fieldX + fieldW, curY + 44.0f };
+                ImGui::SetCursorScreenPos(sTL);
+                ImGui::InvisibleButton("teamsBtn", { fieldW, 44.0f });
+                bool hov = ImGui::IsItemHovered() && !s_authPending;
+                if (ImGui::IsItemClicked()) startOAuth(OAuthProvider::Microsoft);
+                dl->AddRectFilled(sTL, sBR,
+                    hov ? IM_COL32(50,50,58,255) : IM_COL32(38,38,44,255), 8.0f);
+                dl->AddRect(sTL, sBR, IM_COL32(75,75,85,255), 8.0f, 0, 1.0f);
+                float icCX = sTL.x + 52.0f, icCY = sTL.y + 22.0f;
+                if (msIconTex)
+                    dl->AddImage((ImTextureID)msIconTex,
+                        { icCX - 10.0f, icCY - 10.0f }, { icCX + 10.0f, icCY + 10.0f });
+                else
+                    DrawWindowsIcon(dl, { icCX, icCY }, 9.0f, IM_COL32(255,255,255,220));
+                ImGui::PushFont(F[1]);
+                ImVec2 lsz = ImGui::CalcTextSize("Continue with Microsoft");
+                dl->AddText({ sTL.x + 70.0f, sTL.y + (44.0f - lsz.y) * 0.5f },
+                            IM_COL32(255,255,255,220), "Continue with Microsoft");
+                ImGui::PopFont();
+                curY += 44.0f + 8.0f;
+            }
         }
     }
 

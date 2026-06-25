@@ -1,6 +1,7 @@
 #pragma once
 #include "../../cinema_data/include/IUserRepository.h"
 #include "../../cinema_data/include/SmtpMailer.h"
+#include "../../cinema_data/include/OAuthHelper.h"
 #include <memory>
 #include <string>
 
@@ -71,6 +72,25 @@ public:
         if (!ok) {
             m_lastError = m_repo->GetLastError();
             if (m_lastError.empty()) m_lastError = "Incorrect username or password.";
+        }
+        return ok;
+    }
+
+    // Opens the browser for Google or Microsoft sign-in (PKCE OAuth 2.0).
+    // Blocks until the user completes login or 5 minutes elapse — call from a background thread.
+    bool LoginWithOAuth(OAuthProvider provider) {
+        m_lastError = "";
+        OAuthResult r = DoOAuthFlow(provider);
+        if (!r.success) { m_lastError = r.error; return false; }
+
+        // User already has an account — log them in directly
+        if (m_repo->LoginByEmail(r.email)) return true;
+
+        // First-time sign-in — create a customer account from the provider profile
+        bool ok = m_repo->RegisterOAuthUser(r.name, r.email);
+        if (!ok) {
+            m_lastError = m_repo->GetLastError();
+            if (m_lastError.empty()) m_lastError = "Failed to create account.";
         }
         return ok;
     }

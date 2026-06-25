@@ -17,5 +17,7 @@ public:
     bool ValidateLogin(const std::string& username, const std::string& password) override;
     bool CreateVerificationCode(const std::string& email, std::string& outCode) override;
     bool ValidateVerificationCode(const std::string& email, const std::string& code) override;
+    bool LoginByEmail(const std::string& email) override;
+    bool RegisterOAuthUser(const std::string& name, const std::string& email) override;
     const std::string& GetLastError() const override { return m_lastError; }
 };
