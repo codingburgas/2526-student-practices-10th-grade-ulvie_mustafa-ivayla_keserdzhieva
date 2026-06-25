@@ -7,8 +7,21 @@
 #pragma comment(lib, "urlmon.lib")
 
 #include "SqlUserRepository.h"
+#include "SqlTicketRepository.h"
 #include "UserService.h"
+#include "BookingService.h"
 #include <memory>
+#include <random>
+
+class SimpleIdGenerator : public IIdGenerator {
+    std::mt19937_64 m_gen{ std::random_device{}() };
+public:
+    std::string GenerateId() override {
+        char buf[24];
+        snprintf(buf, sizeof(buf), "TKT%016llX", (unsigned long long)m_gen());
+        return buf;
+    }
+};
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -39,13 +52,14 @@ void RenderMovieDetail(
     ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
 
 void RenderPurchase(
-    bool& goBack, bool& goHome, bool& goTickets,
+    bool& goBack, bool& goHome, bool& goTickets, bool& goSchedule,
     int movieIndex, int seatCount, int timeIdx,
     int dayOffset, int weekStart,
-    ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
+    ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights,
+    BookingService* bookingSvc);
 
 void RenderSchedule(
-    bool& goHome, int& selectedMovieIndex,
+    bool& goHome, bool& goTickets, int& selectedMovieIndex,
     bool loggedIn,
     ID3D11ShaderResourceView** posters, int* posterWidths, int* posterHeights);
 
@@ -223,7 +237,10 @@ int main(int, char**) {
     LoadTextureFromFile(g_pd3dDevice, "assets/icons/appleIcon.png",     &appleIconTex,  &appleIconW,  &appleIconH);
     LoadTextureFromFile(g_pd3dDevice, "assets/icons/microsoftIcon.png", &msIconTex,     &msIconW,     &msIconH);
 
-    auto userRepo = std::make_shared<SqlUserRepository>();
+    auto userRepo   = std::make_shared<SqlUserRepository>();
+    auto ticketRepo = std::make_shared<SqlTicketRepository>();
+    auto idGen      = std::make_shared<SimpleIdGenerator>();
+    BookingService bookingSvc(ticketRepo, idGen);
 
     // ── SMTP configuration ────────────────────────────────────────────────────
     // Default: MailHog on localhost:1025 (no auth, no TLS).
@@ -264,14 +281,16 @@ int main(int, char**) {
         ImGui::NewFrame();
 
         if (showPurchase) {
-            bool goBack = false, goHome = false, goTickets = false;
-            RenderPurchase(goBack, goHome, goTickets,
+            bool goBack = false, goHome = false, goTickets = false, goSchedule = false;
+            RenderPurchase(goBack, goHome, goTickets, goSchedule,
                 selectedMovieIndex, purchaseSeatCount, purchaseTimeIdx,
                 purchaseDayOffset, purchaseWeekStart,
-                posters, posterWidths, posterHeights);
-            if (goBack) showPurchase = false;
-            if (goHome) { showPurchase = false; selectedMovieIndex = -1; }
-            if (goTickets) { showPurchase = false; selectedMovieIndex = -1; showTickets = true; }
+                posters, posterWidths, posterHeights,
+                &bookingSvc);
+            if (goBack)     { showPurchase = false; }
+            if (goHome)     { showPurchase = false; selectedMovieIndex = -1; }
+            if (goTickets)  { showPurchase = false; selectedMovieIndex = -1; showTickets  = true; }
+            if (goSchedule) { showPurchase = false; selectedMovieIndex = -1; showSchedule = true; }
         } else if (selectedMovieIndex >= 0) {
             bool goBack = false, goPurchase = false;
             int mdSeatCount = 0, mdTimeIdx = 0, mdDayOffset = 0, mdWeekStart = 0;
@@ -287,10 +306,11 @@ int main(int, char**) {
                 showPurchase      = true;
             }
         } else if (showSchedule) {
-            bool goHome = false;
-            RenderSchedule(goHome, selectedMovieIndex, loggedIn,
+            bool goHome = false, goTickets = false;
+            RenderSchedule(goHome, goTickets, selectedMovieIndex, loggedIn,
                 posters, posterWidths, posterHeights);
-            if (goHome) showSchedule = false;
+            if (goHome)    { showSchedule = false; }
+            if (goTickets) { showSchedule = false; showTickets = true; }
         } else if (showTickets) {
             bool goHome = false, goSched = false;
             RenderMyTickets(goHome, goSched,

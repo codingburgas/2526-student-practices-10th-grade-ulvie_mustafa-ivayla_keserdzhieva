@@ -1,5 +1,6 @@
 #include "imgui.h"
 #include "ticketStore.h"
+#include "citySelector.h"
 #include <d3d11.h>
 #include <string>
 #include <cstdio>
@@ -118,9 +119,11 @@ void RenderMyTickets(
     float cityTop  = orig.y + (NAV_H - CITY_H) * 0.5f;
     ImGui::SetCursorScreenPos({ cityLeft, cityTop });
     ImGui::InvisibleButton("tk_city", { CITY_W, CITY_H });
+    bool tkCityHov = ImGui::IsItemHovered();
+    RenderCitySelector(F, { cityLeft, cityTop }, CITY_W, CITY_H, ImGui::IsItemClicked());
     ImGui::PushFont(F[1]);
     dl->AddText({ cityLeft + 20.0f, cityTop + (CITY_H - F[1]->LegacySize) * 0.5f },
-                ImGui::IsItemHovered() ? TK_WHITE : TK_MUTED, "City");
+                tkCityHov ? TK_WHITE : TK_MUTED, g_selectedCity.c_str());
     ImGui::PopFont();
     TKPin(dl, { cityLeft + 11.0f, cityTop + CITY_H * 0.5f }, 7.0f, TK_ACCENT);
 

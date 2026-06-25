@@ -139,6 +139,7 @@
     <ClCompile Include="src\OAuthHelper.cpp" />
     <ClCompile Include="src\pch.cpp" />
     <ClCompile Include="src\SmtpMailer.cpp" />
+    <ClCompile Include="src\SqlTicketRepository.cpp" />
     <ClCompile Include="src\SqlUserRepository.cpp" />
   </ItemGroup>
   <ItemGroup>

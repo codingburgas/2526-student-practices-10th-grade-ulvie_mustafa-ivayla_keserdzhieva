@@ -1,4 +1,5 @@
 #include "imgui.h"
+#include "citySelector.h"
 #include <d3d11.h>
 #include <string>
 #include <cstdio>
@@ -94,7 +95,7 @@ static int s_selTime[SP_ENTRY_COUNT][2] = {
 static const char* sp_dayNames[]   = { "Sun","Mon","Tue","Wed","Thu","Fri","Sat" };
 
 void RenderSchedule(
-    bool& goHome, int& selectedMovieIndex,
+    bool& goHome, bool& goTickets, int& selectedMovieIndex,
     bool loggedIn,
     ID3D11ShaderResourceView** posters,
     int* /*posterWidths*/, int* /*posterHeights*/)
@@ -148,7 +149,10 @@ void RenderSchedule(
         ImGui::SetCursorScreenPos({ nx - 4.0f, orig.y + 8.0f });
         ImGui::InvisibleButton(("sp_nav_" + std::string(navItems[i])).c_str(),
                                { tsz.x + 8.0f, NAV_H - 16.0f });
-        if (ImGui::IsItemClicked() && i == 0) goHome = true;
+        if (ImGui::IsItemClicked()) {
+            if (i == 0) goHome    = true;
+            if (i == 1) goTickets = true;
+        }
         nx += tsz.x + 42.0f;
     }
     ImGui::PopFont();
@@ -167,9 +171,11 @@ void RenderSchedule(
     float cityTop   = orig.y + (NAV_H - CITY_H) * 0.5f;
     ImGui::SetCursorScreenPos({ cityLeft, cityTop });
     ImGui::InvisibleButton("sp_city", { CITY_W, CITY_H });
+    bool spCityHov = ImGui::IsItemHovered();
+    RenderCitySelector(F, { cityLeft, cityTop }, CITY_W, CITY_H, ImGui::IsItemClicked());
     ImGui::PushFont(F[1]);
-    dl->AddText({ cityLeft + 20.0f, cityTop + (CITY_H - 15.0f) * 0.5f },
-                ImGui::IsItemHovered() ? SP_WHITE : SP_MUTED, "City");
+    dl->AddText({ cityLeft + 20.0f, cityTop + (CITY_H - F[1]->LegacySize) * 0.5f },
+                spCityHov ? SP_WHITE : SP_MUTED, g_selectedCity.c_str());
     ImGui::PopFont();
     SPPin(dl, { cityLeft + 11.0f, cityTop + CITY_H * 0.5f }, 7.0f, SP_ACCENT);
 

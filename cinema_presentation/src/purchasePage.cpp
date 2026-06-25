@@ -1,5 +1,7 @@
 #include "imgui.h"
 #include "ticketStore.h"
+#include "BookingService.h"
+#include "citySelector.h"
 #include <d3d11.h>
 #include <string>
 #include <cstdio>
@@ -118,11 +120,12 @@ static void PUInput(ImFont** F, const char* label, const char* id,
 
 // ─────────────────────────────────────────────────────────────────────────────
 void RenderPurchase(
-    bool& goBack, bool& goHome, bool& goTickets,
+    bool& goBack, bool& goHome, bool& goTickets, bool& goSchedule,
     int movieIndex, int seatCount, int timeIdx,
     int dayOffset, int weekStart,
     ID3D11ShaderResourceView** posters,
-    int* /*posterWidths*/, int* /*posterHeights*/)
+    int* /*posterWidths*/, int* /*posterHeights*/,
+    BookingService* bookingSvc)
 {
     // Reset confirmed flag when entering a new purchase session
     static int s_lastMovie = -9999;
@@ -190,7 +193,11 @@ void RenderPurchase(
         ImGui::SetCursorScreenPos({ nx-4.0f, orig.y+8.0f });
         ImGui::InvisibleButton(("pu_nav_"+std::string(navItems[i])).c_str(),
                                { tsz.x+8.0f, NAV_H-16.0f });
-        if (ImGui::IsItemClicked() && i == 0) goHome = true;
+        if (ImGui::IsItemClicked()) {
+            if (i == 0) goHome     = true;
+            if (i == 1) goTickets  = true;
+            if (i == 2) goSchedule = true;
+        }
         nx += tsz.x + 42.0f;
     }
     ImGui::PopFont();
@@ -208,9 +215,11 @@ void RenderPurchase(
     float cityTop  = orig.y + (NAV_H - CITY_H) * 0.5f;
     ImGui::SetCursorScreenPos({ cityLeft, cityTop });
     ImGui::InvisibleButton("pu_city", { CITY_W, CITY_H });
+    bool puCityHov = ImGui::IsItemHovered();
+    RenderCitySelector(F, { cityLeft, cityTop }, CITY_W, CITY_H, ImGui::IsItemClicked());
     ImGui::PushFont(F[1]);
     dl->AddText({ cityLeft+20.0f, cityTop+(CITY_H-F[1]->LegacySize)*0.5f },
-                ImGui::IsItemHovered() ? PU_WHITE : PU_MUTED, "City");
+                puCityHov ? PU_WHITE : PU_MUTED, g_selectedCity.c_str());
     ImGui::PopFont();
     PUPin(dl, { cityLeft+11.0f, cityTop+CITY_H*0.5f }, 7.0f, PU_ACCENT);
 
@@ -484,6 +493,22 @@ void RenderPurchase(
             tk.year       = sd.tm_year + 1900;
             tk.ticketType = "Adult";
             g_purchasedTickets.push_back(tk);
+
+            if (bookingSvc) {
+                TicketRecord rec;
+                rec.title      = tk.title;
+                rec.hall       = tk.hall;
+                rec.seat       = tk.seat;
+                rec.fmt        = tk.fmt;
+                rec.showTime   = tk.time;
+                rec.day        = tk.dayNum;
+                rec.month      = tk.month;
+                rec.year       = tk.year;
+                rec.ticketType = tk.ticketType;
+                rec.city       = g_selectedCity;
+                rec.location   = "Galleria Burgas";
+                bookingSvc->BookTicket(rec);
+            }
         }
     }
     ImGui::PushFont(F[0]);
