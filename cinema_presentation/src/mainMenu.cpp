@@ -231,7 +231,9 @@ void RenderMainMenu(
     bool& outShowModal,
     bool& outGoSchedule,
     bool& outGoTickets,
+    bool& outGoAdmin,
     bool& outLoggedIn,
+    bool& isAdmin,
     ID3D11ShaderResourceView* blurBgSrv,
     ID3D11ShaderResourceView* googleIconTex,
     ID3D11ShaderResourceView* appleIconTex,
@@ -335,6 +337,18 @@ void RenderMainMenu(
             }
         }
         nx += tSz.x + 42.0f;
+    }
+    // Admin Panel — only visible after admin login
+    if (s_loggedIn && isAdmin) {
+        ImVec2 apSz = ImGui::CalcTextSize("Admin Panel");
+        float  apTy = orig.y + (NAV_H - apSz.y) * 0.5f;
+        dl->AddText({ nx, apTy }, C_MUTED, "Admin Panel");
+        float ulY = apTy + apSz.y + 4.0f;
+        ImGui::SetCursorScreenPos({ nx - 4.0f, orig.y + 8.0f });
+        ImGui::InvisibleButton("nav_AdminPanel", { apSz.x + 8.0f, NAV_H - 16.0f });
+        if (ImGui::IsItemHovered())
+            dl->AddLine({ nx, ulY }, { nx + apSz.x, ulY }, IM_COL32(142, 84, 100, 85), 1.0f);
+        if (ImGui::IsItemClicked()) outGoAdmin = true;
     }
     ImGui::PopFont();
 
@@ -840,18 +854,27 @@ void RenderMainMenu(
             bool ok = s_authFuture.get();
             if (s_authAction == 1) {        // send-code result
                 s_codeSent = ok;
-                if (!ok) {
+                if (ok) {
+                    const auto& info = userSvc ? userSvc->GetLastError() : std::string{};
+                    if (!info.empty()) {
+                        // Email failed but code is in the DB — show it as an amber warning
+                        strcpy_s(s_validMsg, info.c_str());
+                        s_resultCode = -3;
+                    } else {
+                        s_resultCode = 0;
+                    }
+                } else {
                     const auto& e = userSvc ? userSvc->GetLastError() : std::string{};
                     strcpy_s(s_validMsg, e.empty() ? "Failed to send code. Check SMTP config." : e.c_str());
                     s_resultCode = -2;
-                } else {
-                    s_resultCode = 0;
                 }
             } else if (s_authAction == 2) {  // register / login result
                 s_resultCode = ok ? 1 : -1;
                 if (ok && s_loginTab == 0) {
                     s_loggedIn       = true;
                     outLoggedIn      = true;
+                    isAdmin          = (userSvc && userSvc->GetLastLoggedInRole() == "admin");
+                    if (isAdmin) outGoAdmin = true;
                     s_showLoginModal = false;
                 }
                 if (!ok && userSvc) {

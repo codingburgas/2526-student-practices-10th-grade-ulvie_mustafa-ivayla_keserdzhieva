@@ -139,16 +139,19 @@
     <ClCompile Include="src\OAuthHelper.cpp" />
     <ClCompile Include="src\pch.cpp" />
     <ClCompile Include="src\SmtpMailer.cpp" />
+    <ClCompile Include="src\SqlMovieRepository.cpp" />
     <ClCompile Include="src\SqlTicketRepository.cpp" />
     <ClCompile Include="src\SqlUserRepository.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\framework.h" />
+    <ClInclude Include="include\IMovieRepository.h" />
     <ClInclude Include="include\ITicketRepository.h" />
     <ClInclude Include="include\IUserRepository.h" />
     <ClInclude Include="include\OAuthHelper.h" />
     <ClInclude Include="include\pch.h" />
     <ClInclude Include="include\SmtpMailer.h" />
+    <ClInclude Include="include\SqlMovieRepository.h" />
     <ClInclude Include="include\SqlTicketRepository.h" />
     <ClInclude Include="include\SqlUserRepository.h" />
   </ItemGroup>

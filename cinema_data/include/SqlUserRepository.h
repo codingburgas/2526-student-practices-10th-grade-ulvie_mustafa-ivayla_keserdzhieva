@@ -8,6 +8,7 @@ class SqlUserRepository : public IUserRepository {
     SQLHENV hEnv = SQL_NULL_HENV;
     SQLHDBC hDbc = SQL_NULL_HDBC;
     std::string m_lastError;
+    std::string m_lastRole;
     bool Connect();
     void Disconnect();
 public:
@@ -19,5 +20,6 @@ public:
     bool ValidateVerificationCode(const std::string& email, const std::string& code) override;
     bool LoginByEmail(const std::string& email) override;
     bool RegisterOAuthUser(const std::string& name, const std::string& email) override;
-    const std::string& GetLastError() const override { return m_lastError; }
+    const std::string& GetLastError()        const override { return m_lastError; }
+    const std::string& GetLastLoggedInRole() const override { return m_lastRole;  }
 };

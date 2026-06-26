@@ -24,4 +24,6 @@ public:
     // OAuth: create a customer account keyed by email (random internal password)
     virtual bool RegisterOAuthUser(const std::string& name, const std::string& email) = 0;
     virtual const std::string& GetLastError() const = 0;
+    // Returns the role ("customer"/"admin") of the last successfully validated login
+    virtual const std::string& GetLastLoggedInRole() const = 0;
 };

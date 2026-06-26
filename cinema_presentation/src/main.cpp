@@ -8,8 +8,10 @@
 
 #include "SqlUserRepository.h"
 #include "SqlTicketRepository.h"
+#include "SqlMovieRepository.h"
 #include "UserService.h"
 #include "BookingService.h"
+#include "MovieService.h"
 #include <memory>
 #include <random>
 
@@ -39,12 +41,17 @@ void RenderMainMenu(
     bool& outShowModal,
     bool& outGoSchedule,
     bool& outGoTickets,
+    bool& outGoAdmin,
     bool& outLoggedIn,
+    bool& isAdmin,
     ID3D11ShaderResourceView* blurBgSrv,
     ID3D11ShaderResourceView* googleIconTex,
     ID3D11ShaderResourceView* appleIconTex,
     ID3D11ShaderResourceView* msIconTex,
     UserService* userSvc);
+
+void RenderAdmin(bool& goHome, bool& goTickets, bool& goSchedule, MovieService* movieSvc);
+void ResetAdminState();
 
 void RenderMovieDetail(
     int movieIndex, bool& goBack, bool& goPurchase,
@@ -239,8 +246,10 @@ int main(int, char**) {
 
     auto userRepo   = std::make_shared<SqlUserRepository>();
     auto ticketRepo = std::make_shared<SqlTicketRepository>();
+    auto movieRepo  = std::make_shared<SqlMovieRepository>();
     auto idGen      = std::make_shared<SimpleIdGenerator>();
     BookingService bookingSvc(ticketRepo, idGen);
+    MovieService   movieSvc(movieRepo);
 
     // ── SMTP configuration ────────────────────────────────────────────────────
     // Default: MailHog on localhost:1025 (no auth, no TLS).
@@ -260,7 +269,9 @@ int main(int, char**) {
     bool showSchedule      = false;
     bool showTickets       = false;
     bool showPurchase      = false;
+    bool showAdmin         = false;
     bool loggedIn          = false;
+    bool isAdmin           = false;
     int  purchaseSeatCount = 0;
     int  purchaseTimeIdx   = 0;
     int  purchaseDayOffset = 0;
@@ -280,7 +291,13 @@ int main(int, char**) {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
 
-        if (showPurchase) {
+        if (showAdmin) {
+            bool goHome = false, goTickets = false, goSchedule = false;
+            RenderAdmin(goHome, goTickets, goSchedule, &movieSvc);
+            if (goHome)     { showAdmin = false; }
+            if (goTickets)  { showAdmin = false; showTickets  = true; }
+            if (goSchedule) { showAdmin = false; showSchedule = true; }
+        } else if (showPurchase) {
             bool goBack = false, goHome = false, goTickets = false, goSchedule = false;
             RenderPurchase(goBack, goHome, goTickets, goSchedule,
                 selectedMovieIndex, purchaseSeatCount, purchaseTimeIdx,
@@ -318,18 +335,19 @@ int main(int, char**) {
             if (goHome)  showTickets = false;
             if (goSched) { showTickets = false; showSchedule = true; }
         } else {
-            bool goSchedule = false, goTickets = false;
+            bool goSchedule = false, goTickets = false, goAdmin = false;
             RenderMainMenu(heroBanners, heroWidths, heroHeights, currentHeroIndex,
                 posters, posterWidths, posterHeights, selectedMovieIndex,
                 playIconTex, playIconW, playIconH,
                 favIconTex,  favIconW,  favIconH,
                 leftArrTex,  leftArrW,  leftArrH,
                 rightArrTex, rightArrW, rightArrH,
-                showModal, goSchedule, goTickets, loggedIn, g_blurCapSRV,
+                showModal, goSchedule, goTickets, goAdmin, loggedIn, isAdmin, g_blurCapSRV,
                 googleIconTex, appleIconTex, msIconTex,
                 &userSvc);
             if (goSchedule) showSchedule = true;
             if (goTickets)  showTickets  = true;
+            if (goAdmin)    { showAdmin = true; ResetAdminState(); }
         }
 
         ImGui::Render();

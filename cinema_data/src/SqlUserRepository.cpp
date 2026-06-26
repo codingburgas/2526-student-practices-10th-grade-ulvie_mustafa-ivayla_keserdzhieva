@@ -121,17 +121,21 @@ bool SqlUserRepository::ValidateLogin(const std::string& username, const std::st
     SQLHSTMT hStmt = SQL_NULL_HSTMT;
     SQLAllocHandle(SQL_HANDLE_STMT, hDbc, &hStmt);
     SQLPrepareA(hStmt,
-        (SQLCHAR*)"SELECT COUNT(*) FROM Users WHERE Username=? AND Password=?", SQL_NTS);
+        (SQLCHAR*)"SELECT Role FROM Users WHERE Username=? AND Password=?", SQL_NTS);
 
     SQLLEN lu = username.size(), lp = password.size();
     SQLBindParameter(hStmt,1,SQL_PARAM_INPUT,SQL_C_CHAR,SQL_VARCHAR,256,0,(SQLPOINTER)username.c_str(),username.size(),&lu);
     SQLBindParameter(hStmt,2,SQL_PARAM_INPUT,SQL_C_CHAR,SQL_VARCHAR,256,0,(SQLPOINTER)password.c_str(),password.size(),&lp);
 
     bool valid = false;
+    m_lastRole = "";
     if (SQL_SUCCEEDED(SQLExecute(hStmt))) {
-        SQLINTEGER count = 0; SQLLEN ind = 0;
-        SQLBindCol(hStmt, 1, SQL_C_LONG, &count, sizeof(count), &ind);
-        if (SQL_SUCCEEDED(SQLFetch(hStmt))) valid = (count > 0);
+        char role[50] = {}; SQLLEN ind = 0;
+        SQLBindCol(hStmt, 1, SQL_C_CHAR, role, sizeof(role), &ind);
+        if (SQL_SUCCEEDED(SQLFetch(hStmt))) {
+            valid      = true;
+            m_lastRole = (ind != SQL_NULL_DATA) ? role : "customer";
+        }
     }
     if (!valid && m_lastError.empty())
         m_lastError = "Incorrect username or password.";
